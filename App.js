@@ -1,20 +1,27 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from "react";
+import Clientes from "./src/views/Clientes";
+import Proveedores from "./src/views/Proveedores";
+import Productos from "./src/views/Productos";
+import Compras from "./src/views/Compras";
+import Ventas from "./src/views/Ventas";
+import { ScrollView } from "react-native";
 
-export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+
+
+export default function App( ) {
+
+return (
+<>
+
+<ScrollView>
+<Compras    />
+<Ventas
+/>
+<Proveedores/>
+<Productos />
+<Clientes/>
+</ScrollView>
+</>
+
+);
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
