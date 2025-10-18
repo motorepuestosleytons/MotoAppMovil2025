@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from "react-native";
 
-const BotonEliminarCliente = ({ id, eliminarCliente }) => {
+// Nombre del componente adaptado
+const BotonEliminarProveedor = ({ id, eliminarProveedor }) => {
   const [visible, setVisible] = useState(false);
 
   const confirmarEliminar = () => {
     setVisible(false);
-    eliminarCliente(id);
+    // Uso de la prop adaptada
+    eliminarProveedor(id);
   };
 
   return (
@@ -28,7 +30,8 @@ const BotonEliminarCliente = ({ id, eliminarCliente }) => {
       >
         <View style={styles.overlay}>
           <View style={styles.modal}>
-            <Text style={styles.texto}>¿Desea eliminar este cliente?</Text>
+            {/* Texto adaptado */}
+            <Text style={styles.texto}>¿Desea eliminar este proveedor?</Text>
 
             <View style={styles.fila}>
               <TouchableOpacity
@@ -90,4 +93,5 @@ const styles = StyleSheet.create({
   textoAccion: { color: "white", fontWeight: "bold" },
 });
 
-export default BotonEliminarCliente;
+// Exportación adaptada
+export default BotonEliminarProveedor;

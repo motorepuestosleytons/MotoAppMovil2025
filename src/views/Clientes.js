@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Alert } from "react-native";
 import { db } from "../database/firebaseconfig.js";
 import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc } from "firebase/firestore";
 import FormularioClientes from "../Components/FormularioClientes.js";
@@ -7,15 +7,15 @@ import TablaClientes from "../Components/TablaClientes.js";
 
 const Clientes = () => {
   const [clientes, setClientes] = useState([]);
+  // Los estados 'id_cliente' y 'apellido' siguen eliminados en este componente para la simplificación general.
   const [nuevoCliente, setNuevoCliente] = useState({
-    id_cliente: "",
     nombre: "",
-    apellido: "",
     cedula: "",
     telefono: "",
   });
-  const [idCliente, setIdCliente] = useState(null);
-  const [modoEdicion, setModoEdicion] = useState(false);
+  // Estas variables ya no son cruciales para el flujo de edición del modal, pero se mantienen por estructura.
+  const [idCliente, setIdCliente] = useState(null); 
+  const [modoEdicion, setModoEdicion] = useState(false); 
 
   // Cargar clientes desde Firebase
   const cargarDatos = async () => {
@@ -36,12 +36,14 @@ const Clientes = () => {
     try {
       await deleteDoc(doc(db, "Clientes", id));
       cargarDatos();
+      Alert.alert("Éxito", "Cliente eliminado correctamente.");
     } catch (error) {
       console.error("Error al eliminar cliente:", error);
+      Alert.alert("Error", "No se pudo eliminar el cliente.");
     }
   };
 
-  // Manejar cambios en el formulario
+  // Manejar cambios en el formulario (sigue igual)
   const manejoCambio = (campo, valor) => {
     setNuevoCliente((prev) => ({
       ...prev,
@@ -49,22 +51,18 @@ const Clientes = () => {
     }));
   };
 
-  // Guardar nuevo cliente
+  // Guardar nuevo cliente (sigue igual)
   const guardarCliente = async () => {
-    const { id_cliente, nombre, apellido, cedula, telefono } = nuevoCliente;
-    if (id_cliente && nombre && apellido && cedula && telefono) {
+    const { nombre, cedula, telefono } = nuevoCliente;
+    if (nombre && cedula && telefono) {
       try {
         await addDoc(collection(db, "Clientes"), {
-          id_cliente,
           nombre,
-          apellido,
           cedula,
           telefono,
         });
         setNuevoCliente({
-          id_cliente: "",
           nombre: "",
-          apellido: "",
           cedula: "",
           telefono: "",
         });
@@ -73,51 +71,42 @@ const Clientes = () => {
         console.error("Error al registrar cliente:", error);
       }
     } else {
-      alert("Por favor, complete todos los campos.");
+      Alert.alert("Error", "Por favor, complete todos los campos.");
     }
   };
 
-  // Actualizar cliente existente
+  // Actualizar cliente existente (función original, pero no se usa con el modal de la tabla)
+  // Se deja por si alguna otra parte del código la requiere, aunque su funcionalidad es redundante con `editarCliente` ahora.
   const actualizarCliente = async () => {
-    const { id_cliente, nombre, apellido, cedula, telefono } = nuevoCliente;
-    if (idCliente && id_cliente && nombre && apellido && cedula && telefono) {
+    // Esto se mantendrá sin uso ya que el modal de la tabla no llama a esta función.
+    Alert.alert("Info", "La función de actualización no está enlazada al modal de la tabla.");
+  };
+
+  // **FUNCIÓN CORREGIDA:** Ahora esta función actúa como el "guardador de edición"
+  // Recibe el objeto del cliente con los nuevos valores desde la tabla y actualiza Firebase.
+  const editarCliente = async (clienteActualizado) => {
+    const { id, nombre, cedula, telefono } = clienteActualizado;
+
+    if (id && nombre && cedula && telefono) {
       try {
-        await updateDoc(doc(db, "Clientes", idCliente), {
-          id_cliente,
+        await updateDoc(doc(db, "Clientes", id), {
           nombre,
-          apellido,
           cedula,
           telefono,
         });
-        setNuevoCliente({
-          id_cliente: "",
-          nombre: "",
-          apellido: "",
-          cedula: "",
-          telefono: "",
-        });
-        setIdCliente(null);
-        setModoEdicion(false);
         cargarDatos();
+        Alert.alert("Éxito", "Cliente actualizado correctamente.");
       } catch (error) {
-        console.error("Error al actualizar cliente:", error);
+        console.error("Error al actualizar cliente desde tabla:", error);
+        Alert.alert("Error", "No se pudo actualizar el cliente.");
       }
     } else {
-      alert("Por favor, complete todos los campos.");
+      Alert.alert("Advertencia", "Faltan datos para la actualización.");
     }
-  };
-
-  // Editar cliente (cargar en formulario)
-  const editarCliente = (cliente) => {
-    setNuevoCliente({
-      id_cliente: cliente.id_cliente,
-      nombre: cliente.nombre,
-      apellido: cliente.apellido,
-      cedula: cliente.cedula,
-      telefono: cliente.telefono,
-    });
-    setIdCliente(cliente.id);
-    setModoEdicion(true);
+    
+    // NOTA: Se evita la carga de datos en setNuevoCliente y setModoEdicion/setIdCliente
+    // para no interferir con el formulario principal, ya que la edición se manejó
+    // completamente dentro del modal de TablaClientes.
   };
 
   // Cargar datos al iniciar
@@ -133,11 +122,13 @@ const Clientes = () => {
         guardarCliente={guardarCliente}
         actualizarCliente={actualizarCliente}
         modoEdicion={modoEdicion}
+        cargarDatos={cargarDatos} 
       />
       <TablaClientes
         clientes={clientes}
         eliminarCliente={eliminarCliente}
-        editarCliente={editarCliente}
+        // Pasamos la función que ahora actualiza Firebase
+        editarCliente={editarCliente} 
       />
     </View>
   );

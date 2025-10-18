@@ -6,17 +6,16 @@ import {
   Text,
   Modal,
   TouchableOpacity,
+  Alert, // Usamos Alert en lugar de alert
 } from "react-native";
 import { db } from "../database/firebaseconfig";
 import { collection, addDoc, getDocs } from "firebase/firestore";
 
 const FormularioClientes = ({ cargarDatos }) => {
-  // Campos del formulario
+  // Campos del formulario - Se eliminan 'apellido' e 'idCliente'
   const [nombre, setNombre] = useState("");
-  const [apellido, setApellido] = useState("");
   const [cedula, setCedula] = useState("");
   const [telefono, setTelefono] = useState("");
-  const [idCliente, setIdCliente] = useState("");
 
   // Modal de registro
   const [modalRegistroVisible, setModalRegistroVisible] = useState(false);
@@ -27,28 +26,29 @@ const FormularioClientes = ({ cargarDatos }) => {
 
   // Guardar cliente
   const guardarCliente = async () => {
-    if (nombre && apellido && cedula && telefono && idCliente) {
+    // Se eliminan las validaciones de 'apellido' e 'idCliente'
+    if (nombre && cedula && telefono) {
       try {
         await addDoc(collection(db, "Clientes"), {
-          id_cliente: parseInt(idCliente),
+          // Se elimina 'id_cliente'
           nombre,
-          apellido,
+          // Se elimina 'apellido'
           cedula,
           telefono,
         });
         // Limpiar inputs
         setNombre("");
-        setApellido("");
         setCedula("");
         setTelefono("");
-        setIdCliente("");
         cargarDatos();
         setModalRegistroVisible(false);
+        Alert.alert("Éxito", "Cliente registrado correctamente.");
       } catch (error) {
         console.error("Error al registrar cliente:", error);
+        Alert.alert("Error", "Hubo un problema al registrar el cliente.");
       }
     } else {
-      alert("Por favor, complete todos los campos.");
+      Alert.alert("Atención", "Por favor, complete todos los campos.");
     }
   };
 
@@ -62,7 +62,7 @@ const FormularioClientes = ({ cargarDatos }) => {
       try {
         const snapshot = await getDocs(collection(db, "Clientes"));
         const clienteEncontrado = snapshot.docs
-          .map((doc) => doc.data())
+          .map((doc) => ({ id: doc.id, ...doc.data() })) // Incluir ID de documento por si acaso
           .find(
             (c) =>
               c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -74,7 +74,14 @@ const FormularioClientes = ({ cargarDatos }) => {
       }
     };
 
-    buscarCliente();
+    // Pequeño debounce para evitar llamadas excesivas a Firestore
+    const handler = setTimeout(() => {
+      buscarCliente();
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
   }, [busqueda]);
 
   return (
@@ -102,9 +109,8 @@ const FormularioClientes = ({ cargarDatos }) => {
       {/* Mostrar resultado */}
       {resultado ? (
         <View style={styles.resultado}>
-          <Text>ID: {resultado.id_cliente}</Text>
           <Text>Nombre: {resultado.nombre}</Text>
-          <Text>Apellido: {resultado.apellido}</Text>
+          {/* Se elimina 'Apellido' */}
           <Text>Cédula: {resultado.cedula}</Text>
           <Text>Teléfono: {resultado.telefono}</Text>
         </View>
@@ -120,13 +126,7 @@ const FormularioClientes = ({ cargarDatos }) => {
           <View style={styles.modalContenido}>
             <Text style={styles.tituloModal}>Registrar Cliente</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="ID Cliente"
-              value={idCliente}
-              onChangeText={setIdCliente}
-              keyboardType="numeric"
-            />
+            {/* Se elimina el input de ID Cliente */}
 
             <TextInput
               style={styles.input}
@@ -135,12 +135,7 @@ const FormularioClientes = ({ cargarDatos }) => {
               onChangeText={setNombre}
             />
 
-            <TextInput
-              style={styles.input}
-              placeholder="Apellido"
-              value={apellido}
-              onChangeText={setApellido}
-            />
+            {/* Se elimina el input de Apellido */}
 
             <TextInput
               style={styles.input}
@@ -179,6 +174,7 @@ const FormularioClientes = ({ cargarDatos }) => {
   );
 };
 
+// Se mantienen los estilos ya que no hubo cambios estructurales en el look
 const styles = StyleSheet.create({
   container: { padding: 10, flex: 1 },
   titulo: {

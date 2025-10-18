@@ -8,62 +8,64 @@ import {
   Modal,
   TextInput,
 } from "react-native";
-import BotonEliminarCliente from "./BotonEliminarCliente.js";
+// Se asume que este componente ha sido renombrado y adaptado previamente
+import BotonEliminarProveedor from "./BotonEliminarProveedor.js"; 
 
-const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
+// El componente se renombra a TablaProveedores
+const TablaProveedores = ({ proveedores, eliminarProveedor, editarProveedor }) => {
   // Estados para el Modal de Edición
   const [visible, setVisible] = useState(false);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
-  // Se eliminan 'id_cliente' y 'apellido' de los datos editados
+  const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
+  
+  // Se adaptan los campos de datos editados a los del proveedor
   const [datosEditados, setDatosEditados] = useState({
-    nombre: "",
-    cedula: "",
+    empresa: "",          // Reemplaza a 'nombre'
+    nombre_proveedor: "", // Reemplaza a 'cedula'
     telefono: "",
   });
 
-  const abrirModal = (cliente) => {
-    setClienteSeleccionado(cliente);
-    // Solo se inicializan los campos restantes
+  const abrirModal = (proveedor) => {
+    setProveedorSeleccionado(proveedor);
+    // Inicialización de campos adaptada
     setDatosEditados({
-      nombre: cliente.nombre || "",
-      cedula: cliente.cedula || "",
-      telefono: cliente.telefono || "",
+      empresa: proveedor.empresa || "",
+      nombre_proveedor: proveedor.nombre_proveedor || "",
+      telefono: proveedor.telefono || "",
     });
     setVisible(true);
   };
 
   const guardarCambios = () => {
-    // Se envía el cliente seleccionado fusionado con los datos editados (sin id_cliente ni apellido)
-    editarCliente({ ...clienteSeleccionado, ...datosEditados });
+    // Se envía el proveedor seleccionado fusionado con los datos editados
+    editarProveedor({ ...proveedorSeleccionado, ...datosEditados });
     setVisible(false);
   };
-
+   
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>Tabla de Clientes</Text>
+      {/* Título adaptado */}
+      <Text style={styles.titulo}>Tabla de Proveedores</Text>
 
       <ScrollView horizontal>
         {/* Se ajusta el minWidth para las columnas restantes */}
         <View style={{ minWidth: 500 }}>
-          {/* Encabezado de la tabla */}
+          {/* Encabezado de la tabla - Títulos adaptados */}
           <View style={[styles.fila, styles.encabezado]}>
-            {/* Se elimina 'ID' */}
-            <Text style={[styles.textoEncabezado, styles.columnaNombre]}>Nombre</Text>
-            {/* Se elimina 'Apellido' */}
-            <Text style={[styles.textoEncabezado, styles.columnaCedula]}>Cédula</Text>
+            <Text style={[styles.textoEncabezado, styles.columnaEmpresa]}>Empresa</Text>
+            <Text style={[styles.textoEncabezado, styles.columnaNombreProveedor]}>Nombre Proveedor</Text>
             <Text style={[styles.textoEncabezado, styles.columnaTelefono]}>Teléfono</Text>
             <Text style={[styles.textoEncabezado, styles.columnaAcciones]}>Acciones</Text>
           </View>
 
-          {/* Contenido de la tabla */}
+          {/* Contenido de la tabla - Se usa la prop 'proveedores' */}
           <ScrollView>
-            {clientes.map((item) => (
+            {proveedores.map((item) => (
               <View key={item.id} style={styles.fila}>
-                {/* Se elimina la columna de item.id_cliente */}
-                <Text style={[styles.celda, styles.columnaNombre]}>{item.nombre}</Text>
-                {/* Se elimina la columna de item.apellido */}
-                <Text style={[styles.celda, styles.columnaCedula]}>{item.cedula}</Text>
+                {/* Columnas de datos adaptadas */}
+                <Text style={[styles.celda, styles.columnaEmpresa]}>{item.empresa}</Text>
+                <Text style={[styles.celda, styles.columnaNombreProveedor]}>{item.nombre_proveedor}</Text>
                 <Text style={[styles.celda, styles.columnaTelefono]}>{item.telefono}</Text>
+                
                 <View style={[styles.celda, styles.columnaAcciones]}>
                   <View style={styles.contenedorBotones}>
                     <TouchableOpacity
@@ -72,9 +74,10 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
                     >
                       <Text style={styles.textoBotonEditar}>🖋️</Text>
                     </TouchableOpacity>
-                    <BotonEliminarCliente
+                    {/* Componente de eliminación adaptado */}
+                    <BotonEliminarProveedor
                       id={item.id}
-                      eliminarCliente={eliminarCliente}
+                      eliminarProveedor={eliminarProveedor}
                     />
                   </View>
                 </View>
@@ -94,31 +97,33 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
         <View style={styles.overlay}>
           <View style={styles.modal}>
             <Text style={styles.textoModal}>
-              {/* Se ajusta el título del modal */}
-              Editar Cliente: {datosEditados.nombre}
+              {/* Título del modal adaptado */}
+              Editar Proveedor: {datosEditados.empresa}
             </Text>
-
+            
             <ScrollView style={{ width: "100%" }}>
-              {/* Se elimina el TextInput de ID Cliente */}
 
+              {/* Input para Empresa (antes 'Nombre') */}
               <TextInput
                 style={styles.input}
-                placeholder="Nombre"
-                value={datosEditados.nombre}
+                placeholder="Empresa"
+                value={datosEditados.empresa}
                 onChangeText={(valor) =>
-                  setDatosEditados({ ...datosEditados, nombre: valor })
+                  setDatosEditados({ ...datosEditados, empresa: valor })
                 }
               />
-              {/* Se elimina el TextInput de Apellido */}
 
+              {/* Input para Nombre Proveedor (antes 'Cédula') */}
               <TextInput
                 style={styles.input}
-                placeholder="Cédula"
-                value={datosEditados.cedula}
+                placeholder="Nombre Proveedor"
+                value={datosEditados.nombre_proveedor}
                 onChangeText={(valor) =>
-                  setDatosEditados({ ...datosEditados, cedula: valor })
+                  setDatosEditados({ ...datosEditados, nombre_proveedor: valor })
                 }
               />
+              
+              {/* Input para Teléfono (Sin cambios) */}
               <TextInput
                 style={styles.input}
                 placeholder="Teléfono"
@@ -152,7 +157,7 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
   );
 };
 
-// Se ajustan los estilos para reflejar los cambios en las columnas
+// Se mantienen los estilos de la estructura original, pero se ajustan los nombres de las columnas en 'styles' para claridad.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -164,7 +169,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 1,
     borderColor: "#CCC",
-    alignItems: "center", // Centra verticalmente el contenido
+    alignItems: "center", 
   },
   encabezado: {
     backgroundColor: "#f0f0f0",
@@ -181,20 +186,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: "center",
   },
-  // --- Estilos de ancho de columna ajustados ---
-  columnaNombre: {
-    width: 150, // Mantenemos ancho para el nombre
+  // --- Estilos de ancho de columna (nombres adaptados para reflejar los datos) ---
+  columnaEmpresa: {
+    width: 150, // Antes 'columnaNombre'
   },
-  columnaCedula: {
-    width: 150, // Mantenemos ancho para la cédula
+  columnaNombreProveedor: {
+    width: 150, // Antes 'columnaCedula'
   },
   columnaTelefono: {
-    width: 110, // Ancho intermedio para el teléfono
+    width: 110,
   },
   columnaAcciones: {
-    width: 90, // Se redujo el ancho para los botones de acción
+    width: 90, 
   },
-  // Las columnas columnaId y columnaApellido se eliminan de la tabla y de los estilos de referencia si no se usan.
   // ---------------------------------------------
   contenedorBotones: {
     flexDirection: "row",
@@ -213,7 +217,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  // --- Estilos del Modal (sin cambios estructurales mayores) ---
+  // --- Estilos del Modal (sin cambios) ---
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -257,4 +261,4 @@ const styles = StyleSheet.create({
   textoAccion: { color: "white", fontWeight: "bold" },
 });
 
-export default TablaClientes;
+export default TablaProveedores;

@@ -10,60 +10,65 @@ import {
 } from "react-native";
 import BotonEliminarCliente from "./BotonEliminarCliente.js";
 
-const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
-  // Estados para el Modal de Edición
+const TablaProductos = ({ productos, eliminarProducto, editarProducto }) => {
   const [visible, setVisible] = useState(false);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
-  // Se eliminan 'id_cliente' y 'apellido' de los datos editados
+  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+  
   const [datosEditados, setDatosEditados] = useState({
     nombre: "",
-    cedula: "",
-    telefono: "",
+    modelo: "",
+    precio_compra: "",
+    precio_venta: "",
+    stock: "",
   });
 
-  const abrirModal = (cliente) => {
-    setClienteSeleccionado(cliente);
-    // Solo se inicializan los campos restantes
+  const abrirModal = (producto) => {
+    setProductoSeleccionado(producto);
+    
     setDatosEditados({
-      nombre: cliente.nombre || "",
-      cedula: cliente.cedula || "",
-      telefono: cliente.telefono || "",
+      nombre: producto.nombre?.toString() || "",
+      modelo: producto.modelo?.toString() || "",
+      precio_compra: producto.precio_compra?.toString() || "",
+      precio_venta: producto.precio_venta?.toString() || "",
+      stock: producto.stock?.toString() || "",
     });
     setVisible(true);
   };
 
   const guardarCambios = () => {
-    // Se envía el cliente seleccionado fusionado con los datos editados (sin id_cliente ni apellido)
-    editarCliente({ ...clienteSeleccionado, ...datosEditados });
+    // Se envía el producto seleccionado (con ID) fusionado con los datos editados (todos son String).
+    const productoAEnviar = { ...productoSeleccionado, ...datosEditados };
+    
+    editarProducto(productoAEnviar);
     setVisible(false);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>Tabla de Clientes</Text>
+      <Text style={styles.titulo}>Tabla de Productos</Text>
 
       <ScrollView horizontal>
-        {/* Se ajusta el minWidth para las columnas restantes */}
-        <View style={{ minWidth: 500 }}>
-          {/* Encabezado de la tabla */}
+        <View style={{ minWidth: 680 }}>
           <View style={[styles.fila, styles.encabezado]}>
-            {/* Se elimina 'ID' */}
             <Text style={[styles.textoEncabezado, styles.columnaNombre]}>Nombre</Text>
-            {/* Se elimina 'Apellido' */}
-            <Text style={[styles.textoEncabezado, styles.columnaCedula]}>Cédula</Text>
-            <Text style={[styles.textoEncabezado, styles.columnaTelefono]}>Teléfono</Text>
+            <Text style={[styles.textoEncabezado, styles.columnaModelo]}>MODELO</Text>
+            <Text style={[styles.textoEncabezado, styles.columnaPrecioC]}>P. Compra</Text>
+            <Text style={[styles.textoEncabezado, styles.columnaPrecioV]}>P. Venta</Text>
+            <Text style={[styles.textoEncabezado, styles.columnaStock]}>Stock</Text>
             <Text style={[styles.textoEncabezado, styles.columnaAcciones]}>Acciones</Text>
           </View>
 
-          {/* Contenido de la tabla */}
           <ScrollView>
-            {clientes.map((item) => (
+            {productos.map((item) => (
               <View key={item.id} style={styles.fila}>
-                {/* Se elimina la columna de item.id_cliente */}
-                <Text style={[styles.celda, styles.columnaNombre]}>{item.nombre}</Text>
-                {/* Se elimina la columna de item.apellido */}
-                <Text style={[styles.celda, styles.columnaCedula]}>{item.cedula}</Text>
-                <Text style={[styles.celda, styles.columnaTelefono]}>{item.telefono}</Text>
+                <Text style={[styles.celda, styles.columnaNombre]}>{item.nombre?.toString()}</Text>
+                <Text style={[styles.celda, styles.columnaModelo]}>
+                    {item.modelo?.toString().toUpperCase()}
+                </Text>
+                <Text style={[styles.celda, styles.columnaPrecioC]}>{item.precio_compra?.toString()}</Text>
+                <Text style={[styles.celda, styles.columnaPrecioV]}>{item.precio_venta?.toString()}</Text>
+                <Text style={[styles.celda, styles.columnaStock]}>{item.stock?.toString()}</Text>
+                
                 <View style={[styles.celda, styles.columnaAcciones]}>
                   <View style={styles.contenedorBotones}>
                     <TouchableOpacity
@@ -72,9 +77,10 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
                     >
                       <Text style={styles.textoBotonEditar}>🖋️</Text>
                     </TouchableOpacity>
+                    
                     <BotonEliminarCliente
                       id={item.id}
-                      eliminarCliente={eliminarCliente}
+                      eliminarCliente={eliminarProducto}
                     />
                   </View>
                 </View>
@@ -84,7 +90,6 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
         </View>
       </ScrollView>
 
-      {/* Modal de Edición */}
       <Modal
         visible={visible}
         transparent
@@ -94,13 +99,10 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
         <View style={styles.overlay}>
           <View style={styles.modal}>
             <Text style={styles.textoModal}>
-              {/* Se ajusta el título del modal */}
-              Editar Cliente: {datosEditados.nombre}
+              Editar Producto: {datosEditados.nombre}
             </Text>
 
             <ScrollView style={{ width: "100%" }}>
-              {/* Se elimina el TextInput de ID Cliente */}
-
               <TextInput
                 style={styles.input}
                 placeholder="Nombre"
@@ -109,24 +111,40 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
                   setDatosEditados({ ...datosEditados, nombre: valor })
                 }
               />
-              {/* Se elimina el TextInput de Apellido */}
-
               <TextInput
                 style={styles.input}
-                placeholder="Cédula"
-                value={datosEditados.cedula}
+                placeholder="Modelo"
+                value={datosEditados.modelo}
                 onChangeText={(valor) =>
-                  setDatosEditados({ ...datosEditados, cedula: valor })
+                  setDatosEditados({ ...datosEditados, modelo: valor })
                 }
               />
               <TextInput
                 style={styles.input}
-                placeholder="Teléfono"
-                value={datosEditados.telefono}
+                placeholder="P. Compra"
+                value={datosEditados.precio_compra}
                 onChangeText={(valor) =>
-                  setDatosEditados({ ...datosEditados, telefono: valor })
+                  setDatosEditados({ ...datosEditados, precio_compra: valor })
                 }
-                keyboardType="phone-pad"
+                keyboardType="default"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="P. Venta"
+                value={datosEditados.precio_venta}
+                onChangeText={(valor) =>
+                  setDatosEditados({ ...datosEditados, precio_venta: valor })
+                }
+                keyboardType="default"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Stock"
+                value={datosEditados.stock}
+                onChangeText={(valor) =>
+                  setDatosEditados({ ...datosEditados, stock: valor })
+                }
+                keyboardType="default"
               />
             </ScrollView>
 
@@ -152,7 +170,6 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
   );
 };
 
-// Se ajustan los estilos para reflejar los cambios en las columnas
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -164,7 +181,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 1,
     borderColor: "#CCC",
-    alignItems: "center", // Centra verticalmente el contenido
+    alignItems: "center",
   },
   encabezado: {
     backgroundColor: "#f0f0f0",
@@ -181,21 +198,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: "center",
   },
-  // --- Estilos de ancho de columna ajustados ---
   columnaNombre: {
-    width: 150, // Mantenemos ancho para el nombre
+    width: 150,
   },
-  columnaCedula: {
-    width: 150, // Mantenemos ancho para la cédula
+  columnaModelo: {
+    width: 120,
   },
-  columnaTelefono: {
-    width: 110, // Ancho intermedio para el teléfono
+  columnaPrecioC: {
+    width: 120,
+  },
+  columnaPrecioV: {
+    width: 120,
+  },
+  columnaStock: {
+    width: 80,
   },
   columnaAcciones: {
-    width: 90, // Se redujo el ancho para los botones de acción
+    width: 90,
   },
-  // Las columnas columnaId y columnaApellido se eliminan de la tabla y de los estilos de referencia si no se usan.
-  // ---------------------------------------------
   contenedorBotones: {
     flexDirection: "row",
     justifyContent: "center",
@@ -213,7 +233,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  // --- Estilos del Modal (sin cambios estructurales mayores) ---
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -257,4 +276,4 @@ const styles = StyleSheet.create({
   textoAccion: { color: "white", fontWeight: "bold" },
 });
 
-export default TablaClientes;
+export default TablaProductos;

@@ -1,18 +1,10 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  TextInput,
-  StyleSheet,
-  Text,
-  Modal,
-  TouchableOpacity,
-} from "react-native";
+import { View,TextInput,StyleSheet,Text,Modal,TouchableOpacity, Alert} from "react-native";
 import { db } from "../database/firebaseconfig";
 import { collection, addDoc, getDocs } from "firebase/firestore";
 
 const FormularioProductos = ({ cargarDatos }) => {
-  // Campos del formulario
-  const [idProducto, setIdProducto] = useState("");
+  // Campos del formulario (sin idProducto)
   const [nombre, setNombre] = useState("");
   const [marca, setMarca] = useState("");
   const [modelo, setModelo] = useState("");
@@ -29,28 +21,18 @@ const FormularioProductos = ({ cargarDatos }) => {
 
   // Guardar producto
   const guardarProducto = async () => {
-    if (
-      idProducto &&
-      nombre &&
-      marca &&
-      modelo &&
-      precioCompra &&
-      precioVenta &&
-      stock
-    ) {
+    if (nombre && marca && modelo && precioCompra && precioVenta && stock) {
       try {
         await addDoc(collection(db, "Productos"), {
-          id_producto: parseInt(idProducto),
           nombre,
           marca,
           modelo,
-          precio_compra: precioCompra,
+          precio_compra: parseFloat(precioCompra),
           precio_venta: parseFloat(precioVenta),
           stock: parseInt(stock),
         });
 
-        // Limpiar inputs
-        setIdProducto("");
+        // Limpiar campos
         setNombre("");
         setMarca("");
         setModelo("");
@@ -60,15 +42,17 @@ const FormularioProductos = ({ cargarDatos }) => {
 
         cargarDatos();
         setModalRegistroVisible(false);
+        Alert.alert("Éxito", "Producto registrado correctamente.");
       } catch (error) {
         console.error("Error al registrar producto:", error);
+        Alert.alert("Error", "No se pudo registrar el producto.");
       }
     } else {
-      alert("Por favor, complete todos los campos.");
+      Alert.alert("Atención", "Por favor, complete todos los campos.");
     }
   };
 
-  // Búsqueda automática
+  // Búsqueda automática (con debounce)
   useEffect(() => {
     const buscarProducto = async () => {
       if (!busqueda.trim()) {
@@ -78,7 +62,7 @@ const FormularioProductos = ({ cargarDatos }) => {
       try {
         const snapshot = await getDocs(collection(db, "Productos"));
         const productoEncontrado = snapshot.docs
-          .map((doc) => doc.data())
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
           .find(
             (p) =>
               p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -91,14 +75,17 @@ const FormularioProductos = ({ cargarDatos }) => {
       }
     };
 
-    buscarProducto();
+    const handler = setTimeout(() => {
+      buscarProducto();
+    }, 300);
+
+    return () => clearTimeout(handler);
   }, [busqueda]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.titulo}>Gestión de Productos</Text>
 
-      {/* Botón para abrir modal de registro arriba */}
       <View style={styles.botonRegistroContainer}>
         <TouchableOpacity
           style={styles.botonRegistro}
@@ -108,10 +95,10 @@ const FormularioProductos = ({ cargarDatos }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Buscador automático */}
+      {/* Buscador */}
       <TextInput
         style={styles.input}
-        placeholder="Buscar producto por nombre, marca o modelo"
+        placeholder="Buscar por nombre, marca o modelo"
         value={busqueda}
         onChangeText={setBusqueda}
       />
@@ -119,7 +106,6 @@ const FormularioProductos = ({ cargarDatos }) => {
       {/* Mostrar resultado */}
       {resultado ? (
         <View style={styles.resultado}>
-          <Text>ID: {resultado.id_producto}</Text>
           <Text>Nombre: {resultado.nombre}</Text>
           <Text>Marca: {resultado.marca}</Text>
           <Text>Modelo: {resultado.modelo}</Text>
@@ -134,18 +120,10 @@ const FormularioProductos = ({ cargarDatos }) => {
       )}
 
       {/* Modal de registro */}
-      <Modal visible={modalRegistroVisible} animationType="slide" transparent={true}>
+      <Modal visible={modalRegistroVisible} animationType="slide" transparent>
         <View style={styles.modalFondo}>
           <View style={styles.modalContenido}>
             <Text style={styles.tituloModal}>Registrar Producto</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="ID Producto"
-              value={idProducto}
-              onChangeText={setIdProducto}
-              keyboardType="numeric"
-            />
 
             <TextInput
               style={styles.input}
@@ -153,21 +131,18 @@ const FormularioProductos = ({ cargarDatos }) => {
               value={nombre}
               onChangeText={setNombre}
             />
-
             <TextInput
               style={styles.input}
               placeholder="Marca"
               value={marca}
               onChangeText={setMarca}
             />
-
             <TextInput
               style={styles.input}
               placeholder="Modelo"
               value={modelo}
               onChangeText={setModelo}
             />
-
             <TextInput
               style={styles.input}
               placeholder="Precio de compra"
@@ -175,7 +150,6 @@ const FormularioProductos = ({ cargarDatos }) => {
               onChangeText={setPrecioCompra}
               keyboardType="numeric"
             />
-
             <TextInput
               style={styles.input}
               placeholder="Precio de venta"
@@ -183,7 +157,6 @@ const FormularioProductos = ({ cargarDatos }) => {
               onChangeText={setPrecioVenta}
               keyboardType="numeric"
             />
-
             <TextInput
               style={styles.input}
               placeholder="Stock"
@@ -214,6 +187,7 @@ const FormularioProductos = ({ cargarDatos }) => {
   );
 };
 
+// === Estilos iguales a los de Clientes ===
 const styles = StyleSheet.create({
   container: { padding: 10, flex: 1 },
   titulo: {
