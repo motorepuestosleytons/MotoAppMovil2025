@@ -1,3 +1,5 @@
+// src/views/Productos.js (Ajustado)
+
 import React, { useEffect, useState } from "react";
 import { View, StyleSheet, Alert } from "react-native";
 import { db } from "../database/firebaseconfig.js";
@@ -12,23 +14,25 @@ import {
 import FormularioProductos from "../Components/FormularioProductos.js";
 import TablaProductos from "../Components/TablaProductos.js";
 
-const Productos = () => {
+// Recibe la prop 'navigation' que viene del Stack Navigator
+const Productos = ({ navigation }) => {
   const [productos, setProductos] = useState([]);
 
-  // Estado para el formulario de registro (mantener como String)
+  // Estado para nuevo producto (formulario)
   const [nuevoProducto, setNuevoProducto] = useState({
     nombre: "",
-    modelo: "", // Se agrega el campo modelo para la vista principal
-    precio_compra: "", // Ajuste de campos
-    precio_venta: "", // Ajuste de campos
+    marca: "",
+    modelo: "",
+    precio_compra: "",
+    precio_venta: "",
     stock: "",
+    foto: "",
   });
 
-  // Variables de control
   const [idProducto, setIdProducto] = useState(null);
   const [modoEdicion, setModoEdicion] = useState(false);
 
-  // 🔄 Cargar productos desde Firebase (se mantiene igual)
+  // 🔄 Cargar productos desde Firebase
   const cargarDatos = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "Productos"));
@@ -42,7 +46,7 @@ const Productos = () => {
     }
   };
 
-  // 🗑️ Eliminar producto (se mantiene igual)
+  // 🗑️ Eliminar producto
   const eliminarProducto = async (id) => {
     try {
       await deleteDoc(doc(db, "Productos", id));
@@ -54,7 +58,7 @@ const Productos = () => {
     }
   };
 
-  // 📝 Manejar cambios en el formulario (se mantiene igual)
+  // 📝 Manejar cambios en el formulario
   const manejoCambio = (campo, valor) => {
     setNuevoProducto((prev) => ({
       ...prev,
@@ -62,87 +66,91 @@ const Productos = () => {
     }));
   };
 
-  // 💾 Guardar nuevo producto (Ajuste de campos y manejo de tipos)
+  // 💾 Guardar nuevo producto
   const guardarProducto = async () => {
-    const { nombre, modelo, precio_compra, precio_venta, stock } = nuevoProducto;
-    
-    // ⚠️ Se ajusta la validación a los campos del nuevo producto
-    if (nombre && modelo && precio_compra && precio_venta && stock) {
+    const { nombre, marca, modelo, precio_compra, precio_venta, stock, foto } = nuevoProducto;
+
+    if (nombre && marca && modelo && precio_compra && precio_venta && stock) {
       try {
         await addDoc(collection(db, "Productos"), {
           nombre,
+          marca,
           modelo,
-          // Conversión a Number SÓLO si el string no está vacío
           precio_compra: parseFloat(precio_compra) || 0,
           precio_venta: parseFloat(precio_venta) || 0,
           stock: parseInt(stock) || 0,
+          foto: foto || "",
         });
         setNuevoProducto({
           nombre: "",
+          marca: "",
           modelo: "",
           precio_compra: "",
           precio_venta: "",
           stock: "",
+          foto: "",
         });
         cargarDatos();
         Alert.alert("Éxito", "Producto registrado correctamente.");
       } catch (error) {
         console.error("Error al registrar producto:", error);
+        Alert.alert("Error", "No se pudo registrar el producto.");
       }
     } else {
       Alert.alert("Error", "Por favor, complete todos los campos.");
     }
   };
 
-  // ✏️ Actualizar producto desde la tabla (FUNCIÓN CLAVE CORREGIDA)
+  // ✏️ Editar producto existente
   const editarProducto = async (productoActualizado) => {
-    const { id, nombre, modelo, precio_compra, precio_venta, stock } = productoActualizado;
+    const { id, nombre, marca, modelo, precio_compra, precio_venta, stock, foto } = productoActualizado;
 
-    // 💡 SOLUCIÓN: Relajamos la validación. Solo exigimos el ID.
-    // La validación de los campos se hace con el operador ternario.
-    if (id) {
-        try {
-            // Se prepara el objeto de actualización con conversión de tipos segura
-            const datosAActualizar = {
-                nombre,
-                modelo,
-                // Convierte a Number si no está vacío, de lo contrario guarda la cadena vacía ("")
-                precio_compra: precio_compra === "" ? "" : parseFloat(precio_compra), 
-                precio_venta: precio_venta === "" ? "" : parseFloat(precio_venta),
-                stock: stock === "" ? "" : parseInt(stock),
-                // Aquí podrías agregar más campos, si existen en tu Firestore, pero no se editan
-                // Por ejemplo: marca, fecha_creacion, etc.
-                // Asegúrate de que los campos en tu Firestore coincidan con los que envías.
-            };
+    if (!id) {
+      Alert.alert("Error", "No se puede actualizar: falta el ID del producto.");
+      return;
+    }
 
-            await updateDoc(doc(db, "Productos", id), datosAActualizar); 
-            
-            cargarDatos();
-            Alert.alert("Éxito", "Producto actualizado correctamente.");
-        } catch (error) {
-            console.error("Error al actualizar producto:", error);
-            Alert.alert("Error", "No se pudo actualizar el producto. Verifique los tipos de datos.");
-        }
-    } else {
-      Alert.alert("Advertencia", "Falta el ID del producto para la actualización.");
+    try {
+      const ref = doc(db, "Productos", id);
+
+      const datosAActualizar = {
+        nombre: String(nombre || ""),
+        marca: String(marca || ""),
+        modelo: String(modelo || ""),
+        precio_compra: parseFloat(precio_compra) || 0,
+        precio_venta: parseFloat(precio_venta) || 0,
+        stock: parseInt(stock) || 0,
+        foto: String(foto || ""),
+      };
+
+      await updateDoc(ref, datosAActualizar);
+      cargarDatos();
+      Alert.alert("Éxito", "Producto actualizado correctamente.");
+    } catch (error) {
+      console.error("Error al actualizar producto:", error);
+      Alert.alert("Error", "No se pudo actualizar el producto.");
     }
   };
 
-  // 🚀 Cargar datos al iniciar
+  // ⚙️ Cargar productos al iniciar
   useEffect(() => {
     cargarDatos();
   }, []);
 
+  // 🚀 FUNCIÓN PARA NAVEGAR AL CATÁLOGO
+  const navegarACatalogo = () => {
+    navigation.navigate('Catalogo'); // El nombre 'Catalogo' debe coincidir con el Stack
+  };
+
   return (
     <View style={styles.container}>
-      {/* Asumiendo que FormularioProductos maneja los campos correctos */}
-      <FormularioProductos
-        nuevoProducto={nuevoProducto}
-        manejoCambio={manejoCambio}
-        guardarProducto={guardarProducto}
-        modoEdicion={modoEdicion}
-        cargarDatos={cargarDatos}
+      {/* 🔽 Formulario de registro (Se le pasa la función de navegación) */}
+      <FormularioProductos 
+        cargarDatos={cargarDatos} 
+        onVerCatalogo={navegarACatalogo} // ⬅️ NUEVA PROP
       />
+
+      {/* 🔽 Tabla de productos */}
       <TablaProductos
         productos={productos}
         eliminarProducto={eliminarProducto}
@@ -152,8 +160,13 @@ const Productos = () => {
   );
 };
 
+// 🎨 Estilos
 const styles = StyleSheet.create({
-  container: { flex: 4, padding: 20, backgroundColor: "#f2f2f2" },
+  container: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: "#fff",
+  },
 });
 
 export default Productos;

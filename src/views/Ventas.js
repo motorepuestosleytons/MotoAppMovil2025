@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   
   listaContainer: {
     flex: 2, 
- marginTop: 80
+ marginTop: -20
   },
   
   listaTitulo: { 

@@ -158,6 +158,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     alignSelf: "stretch",
+    marginTop: -148,
   },
   titulo: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
   fila: {

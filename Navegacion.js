@@ -1,3 +1,5 @@
+// Navegacion.js (Ajustado)
+
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -10,13 +12,14 @@ import Clientes from '../MotoApp/src/views/Clientes.js';
 import Productos from '../MotoApp/src/views/Productos.js'; 
 import Proveedores from '../MotoApp/src/views/Proveedores.js'; 
 import Compras from '../MotoApp/src/views/Compras.js';    
-import Ventas from '../MotoApp/src/views/Ventas.js';      
+import Ventas from '../MotoApp/src/views/Ventas.js';  
+import CatalogoScreen from '../MotoApp/src/views/CatalogoScreen.js'; // ⬅️ NUEVA IMPORTACIÓN
 
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// --- Stacks (No cambian, solo se incluyen para referencia) ---
+// --- Stacks (Solo se modifica ProductosStack) ---
 
 function ClientesStack() {
   return (
@@ -29,7 +32,10 @@ function ClientesStack() {
 function ProductosStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="Productos" component={Productos} options={{ title: 'Gestión de Productos' }} />
+      {/* La vista inicial de la pestaña Productos */}
+      <Stack.Screen name="ProductosPrincipal" component={Productos} options={{ title: 'Gestión de Productos' }} /> 
+      {/* ⬅️ NUEVO: Ruta para el Catálogo */}
+      <Stack.Screen name="Catalogo" component={CatalogoScreen} options={{ title: 'Catálogo de Productos' }} />
     </Stack.Navigator>
   );
 }
@@ -83,7 +89,7 @@ function MyTabs() {
       />
       <Tab.Screen
         name="ProductosTab"
-        component={ProductosStack}
+        component={ProductosStack} // Contiene la navegación hacia Catálogo
         options={{
           tabBarLabel: 'Productos',
           tabBarIcon: ({ color, size }) => (
@@ -108,7 +114,7 @@ function MyTabs() {
           tabBarLabel: 'Compras',
           tabBarIcon: ({ color, size }) => (
             // Ícono de carrito de compras (sí existe)
-            <AntDesign name="shoppingcart" size={size} color={color} /> 
+            <AntDesign name="shopping" size={size} color={color} /> 
           ),
         }}
       />
@@ -119,7 +125,7 @@ function MyTabs() {
           tabBarLabel: 'Ventas',
           tabBarIcon: ({ color, size }) => (
             // Ícono de tarjeta/pago (sí existe)
-            <AntDesign name="creditcard" size={size} color={color} /> 
+            <AntDesign name="shopping-cart" size={size} color={color} /> 
           ),
         }}
       />
