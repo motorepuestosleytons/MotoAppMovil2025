@@ -136,7 +136,7 @@ const Compras = () => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f2f2f2" },
-  container: { flex: 1, backgroundColor: "#f2f2f2" },
+  container: { flex: 1, backgroundColor: "#f2f2f2",marginTop: 45},
   headerContent: { paddingHorizontal: 10, paddingTop: 15 },
   listaContainer: { 
     flex: 2, 

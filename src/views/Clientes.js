@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, Alert } from "react-native";
+import { View, StyleSheet, Alert,Button } from "react-native";
 import { db } from "../database/firebaseconfig.js";
 import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc } from "firebase/firestore";
 import FormularioClientes from "../Components/FormularioClientes.js";
 import TablaClientes from "../Components/TablaClientes.js";
 
-const Clientes = () => {
+const Clientes = ({cerrarSesion}) => {
   const [clientes, setClientes] = useState([]);
   // Los estados 'id_cliente' y 'apellido' siguen eliminados en este componente para la simplificación general.
   const [nuevoCliente, setNuevoCliente] = useState({
@@ -116,7 +116,9 @@ const Clientes = () => {
 
   return (
     <View style={styles.container}>
+      <Button title="Cerrar Sesión" onPress={cerrarSesion} />
       <FormularioClientes
+
         nuevoCliente={nuevoCliente}
         manejoCambio={manejoCambio}
         guardarCliente={guardarCliente}
