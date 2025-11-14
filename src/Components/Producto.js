@@ -1,14 +1,14 @@
-// src/components/Producto.js (Ajustado para manejar errores de imagen)
+// src/components/Producto.js (Ajustado con botón 'Agregar')
 
-import { StyleSheet, Text, View , Image } from "react-native";
+import { StyleSheet, Text, View , Image, TouchableOpacity } from "react-native";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import React, { useState } from "react";
 
-export default function Producto({ imagen, nombre, precio, tiempo, texto, favorito }) {
-  const [imagenValida, setImagenValida] = useState(true); // ⬅️ NUEVO ESTADO
+// ⬅️ Recibe onAgregar
+export default function Producto({ item, imagen, precio, tiempo, texto, favorito, onAgregar }) {
+  const [imagenValida, setImagenValida] = useState(true); 
   const isFavorite = favorito === 'heart' || favorito === true;
 
-  // 💡 Función para manejar el error de carga de imagen
   const manejarErrorImagen = () => {
     setImagenValida(false);
   };
@@ -23,16 +23,14 @@ export default function Producto({ imagen, nombre, precio, tiempo, texto, favori
             style={styles.heart} 
         />
 
-        {/* ⬅️ AJUSTE CLAVE: Renderizado condicional */}
         {imagenValida ? (
             <Image 
                 source={{ uri: imagen }} 
                 style={styles.productoImage} 
-                onError={manejarErrorImagen} // Llama a la función si falla
+                onError={manejarErrorImagen}
                 resizeMode="cover"
             />
         ) : (
-            // Si la imagen no es válida, muestra un texto en su lugar
             <View style={styles.noImagen}>
                 <Text style={styles.noImagenTexto}>🖼️ No hay foto</Text>
             </View>
@@ -42,12 +40,20 @@ export default function Producto({ imagen, nombre, precio, tiempo, texto, favori
             <Text style={styles.productoTitulo} numberOfLines={2}>{texto}</Text> 
             <Text style={styles.productoPrecio}>{precio}</Text>
             <Text style={styles.productoTiempo}>{tiempo}</Text>
+
+            {/* ⬅️ NUEVO BOTÓN AGREGAR */}
+            <TouchableOpacity 
+                style={styles.addButton} 
+                onPress={() => onAgregar(item)} // Llama a la función con el objeto producto
+            >
+                <FontAwesome5 name="cart-plus" size={16} color="#fff" />
+                <Text style={styles.addButtonText}> Agregar</Text>
+            </TouchableOpacity>
         </View>
     </View>
   );
 }
 
-// Estilos ajustados (Se agrega el estilo para "No hay foto")
 const styles = StyleSheet.create({
    productoCard: {
      backgroundColor: "#fff",
@@ -69,22 +75,6 @@ const styles = StyleSheet.create({
      borderRadius: 10,
      marginBottom: 5,
    },
-   // ⬅️ NUEVOS ESTILOS PARA EL PLACEHOLDER DE TEXTO
-   noImagen: {
-        width: '100%',
-        height: 120,
-        borderRadius: 10,
-        marginBottom: 5,
-        backgroundColor: '#e0e0e0', // Gris claro de fondo
-        justifyContent: 'center',
-        alignItems: 'center',
-   },
-   noImagenTexto: {
-        color: '#777',
-        fontSize: 12,
-        fontWeight: 'bold',
-   },
-   // ... (resto de estilos sin cambios)
    productoInfo: {
      width: '100%',
      paddingHorizontal: 5,
@@ -105,15 +95,46 @@ const styles = StyleSheet.create({
      fontSize: 10,
      color: "#666",
      marginTop: 2,
+     marginBottom: 8, // Espacio antes del botón
+   },
+   // ⬅️ NUEVO ESTILO DEL BOTÓN
+   addButton: {
+    flexDirection: 'row',
+    backgroundColor: '#007BFF', // Azul para el botón
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 5,
+   },
+   addButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+   },
+   // ... (Resto de estilos sin cambios)
+   noImagen: {
+        width: '100%',
+        height: 120,
+        borderRadius: 10,
+        marginBottom: 5,
+        backgroundColor: '#e0e0e0',
+        justifyContent: 'center',
+        alignItems: 'center',
+   },
+   noImagenTexto: {
+        color: '#777',
+        fontSize: 12,
+        fontWeight: 'bold',
    },
    heart: {
      position: "absolute",
      top: 15,
+     marginTop: 153,
      right: 15,
      zIndex: 10,
      backgroundColor: 'rgba(255, 255, 255, 0.7)',
      padding: 5,
      borderRadius: 15,
-     marginTop: 158
    },
 });

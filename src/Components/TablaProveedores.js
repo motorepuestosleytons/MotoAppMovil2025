@@ -1,265 +1,212 @@
+// TablaProveedores.js (Estilos Completos y Modernos)
+
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-  TextInput,
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TouchableOpacity,
+    Modal,
+    TextInput,
 } from "react-native";
-// Se asume que este componente ha sido renombrado y adaptado previamente
-import BotonEliminarProveedor from "./BotonEliminarProveedor.js"; 
+import BotonEliminarProveedor from "./BotonEliminarProveedor.js"; // Asumimos que existe y se adapta
+import { Ionicons } from "@expo/vector-icons"; 
 
-// El componente se renombra a TablaProveedores
+// Colores de la paleta moderna
+const COLOR_PRIMARIO = "#1E90FF"; 
+const COLOR_ACCION = "#00A878";   
+const COLOR_CANCELAR = "#6c757d"; 
+
 const TablaProveedores = ({ proveedores, eliminarProveedor, editarProveedor }) => {
-  // Estados para el Modal de Edición
-  const [visible, setVisible] = useState(false);
-  const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
-  
-  // Se adaptan los campos de datos editados a los del proveedor
-  const [datosEditados, setDatosEditados] = useState({
-    empresa: "",          // Reemplaza a 'nombre'
-    nombre_proveedor: "", // Reemplaza a 'cedula'
-    telefono: "",
-  });
-
-  const abrirModal = (proveedor) => {
-    setProveedorSeleccionado(proveedor);
-    // Inicialización de campos adaptada
-    setDatosEditados({
-      empresa: proveedor.empresa || "",
-      nombre_proveedor: proveedor.nombre_proveedor || "",
-      telefono: proveedor.telefono || "",
+    // Estados para el Modal de Edición
+    const [visible, setVisible] = useState(false);
+    const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
+    // Campos Adaptados
+    const [datosEditados, setDatosEditados] = useState({
+        empresa: "",
+        nombre_proveedor: "",
+        telefono: "",
     });
-    setVisible(true);
-  };
 
-  const guardarCambios = () => {
-    // Se envía el proveedor seleccionado fusionado con los datos editados
-    editarProveedor({ ...proveedorSeleccionado, ...datosEditados });
-    setVisible(false);
-  };
-   
-  return (
-    <View style={styles.container}>
-      {/* Título adaptado */}
-      <Text style={styles.titulo}>Tabla de Proveedores</Text>
+    const abrirModal = (proveedor) => {
+        setProveedorSeleccionado(proveedor);
+        // Inicialización de campos adaptada
+        setDatosEditados({
+            empresa: proveedor.empresa || "",
+            nombre_proveedor: proveedor.nombre_proveedor || "",
+            telefono: proveedor.telefono || "",
+        });
+        setVisible(true);
+    };
 
-      <ScrollView horizontal>
-        {/* Se ajusta el minWidth para las columnas restantes */}
-        <View style={{ minWidth: 500 }}>
-          {/* Encabezado de la tabla - Títulos adaptados */}
-          <View style={[styles.fila, styles.encabezado]}>
-            <Text style={[styles.textoEncabezado, styles.columnaEmpresa]}>Empresa</Text>
-            <Text style={[styles.textoEncabezado, styles.columnaNombreProveedor]}>Nombre Proveedor</Text>
-            <Text style={[styles.textoEncabezado, styles.columnaTelefono]}>Teléfono</Text>
-            <Text style={[styles.textoEncabezado, styles.columnaAcciones]}>Acciones</Text>
-          </View>
+    const guardarCambios = () => {
+        // Se llama a la función de prop para guardar en Firestore
+        if (proveedorSeleccionado) {
+            editarProveedor({ ...proveedorSeleccionado, ...datosEditados });
+        }
+        setVisible(false);
+    };
 
-          {/* Contenido de la tabla - Se usa la prop 'proveedores' */}
-          <ScrollView>
-            {proveedores.map((item) => (
-              <View key={item.id} style={styles.fila}>
-                {/* Columnas de datos adaptadas */}
-                <Text style={[styles.celda, styles.columnaEmpresa]}>{item.empresa}</Text>
-                <Text style={[styles.celda, styles.columnaNombreProveedor]}>{item.nombre_proveedor}</Text>
-                <Text style={[styles.celda, styles.columnaTelefono]}>{item.telefono}</Text>
-                
-                <View style={[styles.celda, styles.columnaAcciones]}>
-                  <View style={styles.contenedorBotones}>
-                    <TouchableOpacity
-                      style={styles.botonEditar}
-                      onPress={() => abrirModal(item)}
-                    >
-                      <Text style={styles.textoBotonEditar}>🖋️</Text>
-                    </TouchableOpacity>
-                    {/* Componente de eliminación adaptado */}
-                    <BotonEliminarProveedor
-                      id={item.id}
-                      eliminarProveedor={eliminarProveedor}
-                    />
-                  </View>
+    return (
+        <View style={styles.container}>
+            <Text style={styles.titulo}>Lista de Proveedores</Text> 
+
+            {/* Contenedor principal de la tabla con ScrollView horizontal */}
+            <ScrollView horizontal style={styles.tablaWrapper}>
+                <View style={{ minWidth: 550 }}>
+                    {/* Encabezado de la tabla - Títulos adaptados */}
+                    <View style={[styles.fila, styles.encabezado]}>
+                        <Text style={[styles.textoEncabezado, styles.columnaEmpresa]}>
+                            Empresa
+                        </Text>
+                        <Text style={[styles.textoEncabezado, styles.columnaNombreProveedor]}>
+                            Nombre Proveedor
+                        </Text>
+                        <Text style={[styles.textoEncabezado, styles.columnaTelefono]}>
+                            Teléfono
+                        </Text>
+                        <Text style={[styles.textoEncabezado, styles.columnaAcciones]}>
+                            Acciones
+                        </Text>
+                    </View>
+
+                    {/* Contenido de la tabla con ScrollView vertical */}
+                    <ScrollView style={styles.contenidoScroll}>
+                        {proveedores.map((item, index) => (
+                            <View
+                                key={item.id}
+                                style={[
+                                    styles.fila,
+                                    index % 2 === 0 ? styles.filaPar : styles.filaImpar,
+                                ]}
+                            >
+                                {/* Celdas de datos adaptadas */}
+                                <Text style={[styles.celda, styles.columnaEmpresa]}>
+                                    {item.empresa}
+                                </Text>
+                                <Text style={[styles.celda, styles.columnaNombreProveedor]}>
+                                    {item.nombre_proveedor}
+                                </Text>
+                                <Text style={[styles.celda, styles.columnaTelefono]}>
+                                    {item.telefono}
+                                </Text>
+                                <View style={[styles.celda, styles.columnaAcciones]}>
+                                    <View style={styles.contenedorBotones}>
+                                        <TouchableOpacity
+                                            style={styles.botonEditar}
+                                            onPress={() => abrirModal(item)}
+                                        >
+                                            <Ionicons name="create-outline" size={16} color="#FFF" />
+                                        </TouchableOpacity>
+                                        <BotonEliminarProveedor 
+                                            id={item.id}
+                                            eliminarProveedor={eliminarProveedor}
+                                        />
+                                    </View>
+                                </View>
+                            </View>
+                        ))}
+                    </ScrollView>
                 </View>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-      </ScrollView>
-
-      {/* Modal de Edición */}
-      <Modal
-        visible={visible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setVisible(false)}
-      >
-        <View style={styles.overlay}>
-          <View style={styles.modal}>
-            <Text style={styles.textoModal}>
-              {/* Título del modal adaptado */}
-              Editar Proveedor: {datosEditados.empresa}
-            </Text>
-            
-            <ScrollView style={{ width: "100%" }}>
-
-              {/* Input para Empresa (antes 'Nombre') */}
-              <TextInput
-                style={styles.input}
-                placeholder="Empresa"
-                value={datosEditados.empresa}
-                onChangeText={(valor) =>
-                  setDatosEditados({ ...datosEditados, empresa: valor })
-                }
-              />
-
-              {/* Input para Nombre Proveedor (antes 'Cédula') */}
-              <TextInput
-                style={styles.input}
-                placeholder="Nombre Proveedor"
-                value={datosEditados.nombre_proveedor}
-                onChangeText={(valor) =>
-                  setDatosEditados({ ...datosEditados, nombre_proveedor: valor })
-                }
-              />
-              
-              {/* Input para Teléfono (Sin cambios) */}
-              <TextInput
-                style={styles.input}
-                placeholder="Teléfono"
-                value={datosEditados.telefono}
-                onChangeText={(valor) =>
-                  setDatosEditados({ ...datosEditados, telefono: valor })
-                }
-                keyboardType="phone-pad"
-              />
             </ScrollView>
 
-            <View style={styles.filaBotones}>
-              <TouchableOpacity
-                style={[styles.botonAccion, styles.cancelar]}
-                onPress={() => setVisible(false)}
-              >
-                <Text style={styles.textoAccion}>Cancelar</Text>
-              </TouchableOpacity>
+            {/* Modal de Edición */}
+            <Modal
+                visible={visible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setVisible(false)}
+            >
+                <View style={styles.overlay}>
+                    <View style={styles.modal}>
+                        <Text style={styles.textoModal}>
+                            Editar Proveedor: {datosEditados.empresa}
+                        </Text>
 
-              <TouchableOpacity
-                style={[styles.botonAccion, styles.confirmar]}
-                onPress={guardarCambios}
-              >
-                <Text style={styles.textoAccion}>Guardar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+                        <ScrollView style={{ width: "100%" }}>
+                            {/* Input Adaptado: Empresa */}
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Empresa"
+                                placeholderTextColor="#999"
+                                value={datosEditados.empresa}
+                                onChangeText={(valor) =>
+                                    setDatosEditados({ ...datosEditados, empresa: valor })
+                                }
+                            />
+                            {/* Input Adaptado: Nombre Proveedor */}
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Nombre Proveedor"
+                                placeholderTextColor="#999"
+                                value={datosEditados.nombre_proveedor}
+                                onChangeText={(valor) =>
+                                    setDatosEditados({ ...datosEditados, nombre_proveedor: valor })
+                                }
+                            />
+                            {/* Input Sin Cambios: Teléfono */}
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Teléfono"
+                                placeholderTextColor="#999"
+                                value={datosEditados.telefono}
+                                onChangeText={(valor) =>
+                                    setDatosEditados({ ...datosEditados, telefono: valor })
+                                }
+                                keyboardType="phone-pad"
+                            />
+                        </ScrollView>
+
+                        <View style={styles.filaBotones}>
+                            <TouchableOpacity
+                                style={[styles.botonAccion, styles.cancelar]}
+                                onPress={() => setVisible(false)}
+                            >
+                                <Text style={styles.textoAccion}>Cancelar</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.botonAccion, styles.confirmar]}
+                                onPress={guardarCambios}
+                            >
+                                <Text style={styles.textoAccion}>Guardar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
-      </Modal>
-    </View>
-  );
+    );
 };
 
-// Se mantienen los estilos de la estructura original, pero se ajustan los nombres de las columnas en 'styles' para claridad.
+// Se mantienen los estilos proporcionados
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    alignSelf: "stretch",
-     marginTop: -345,
-  },
-  titulo: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
-  fila: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderColor: "#CCC",
-    alignItems: "center", 
-  },
-  encabezado: {
-    backgroundColor: "#f0f0f0",
-    paddingVertical: 8,
-  },
-  celda: {
-    fontSize: 15,
-    textAlign: "center",
-    paddingHorizontal: 5,
-    paddingVertical: 6,
-  },
-  textoEncabezado: {
-    fontWeight: "bold",
-    fontSize: 15,
-    textAlign: "center",
-  },
-  // --- Estilos de ancho de columna (nombres adaptados para reflejar los datos) ---
-  columnaEmpresa: {
-    width: 150, // Antes 'columnaNombre'
-  },
-  columnaNombreProveedor: {
-    width: 150, // Antes 'columnaCedula'
-  },
-  columnaTelefono: {
-    width: 110,
-  },
-  columnaAcciones: {
-    width: 90, 
-  },
-  // ---------------------------------------------
-  contenedorBotones: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-  },
-  botonEditar: {
-    backgroundColor: "#7c787886",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-  },
-  textoBotonEditar: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  // --- Estilos del Modal (sin cambios) ---
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modal: {
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 10,
-    width: "90%",
-    maxHeight: "85%",
-  },
-  textoModal: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 8,
-    borderRadius: 5,
-    marginBottom: 10,
-  },
-  filaBotones: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  botonAccion: {
-    flex: 1,
-    marginHorizontal: 5,
-    padding: 10,
-    borderRadius: 5,
-    alignItems: "center",
-  },
-  cancelar: { backgroundColor: "#ccc" },
-  confirmar: { backgroundColor: "#457b9d" },
-  textoAccion: { color: "white", fontWeight: "bold" },
+    container: { flex: 1, padding: 10, alignSelf: "stretch", backgroundColor: "#F7F8FA", marginTop: -25 },
+    titulo: { fontSize: 24, fontWeight: "700", marginBottom: 15, color: "#333", textAlign: "center" },
+    tablaWrapper: { backgroundColor: "#fff", borderRadius: 10, overflow: "hidden", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+    contenidoScroll: { maxHeight: 400 },
+    fila: { flexDirection: "row", alignItems: "center", minHeight: 45, borderBottomWidth: 1, borderBottomColor: '#eee' },
+    filaPar: { backgroundColor: "#f8f8f8" },
+    filaImpar: { backgroundColor: "#ffffff" },
+    encabezado: { backgroundColor: COLOR_PRIMARIO, borderBottomWidth: 0, borderTopLeftRadius: 10, borderTopRightRadius: 10, paddingVertical: 12 },
+    celda: { fontSize: 14, color: "#333", paddingHorizontal: 8, paddingVertical: 4, textAlign: "center" },
+    textoEncabezado: { fontWeight: "bold", fontSize: 14, color: "#fff", textAlign: "center" },
+    columnaEmpresa: { width: 170 },
+    columnaNombreProveedor: { width: 150 },
+    columnaTelefono: { width: 110 },
+    columnaAcciones: { width: 120 },
+    contenedorBotones: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", width: "100%" },
+    botonEditar: { backgroundColor: COLOR_ACCION, padding: 7, borderRadius: 5, justifyContent: 'center', alignItems: 'center' },
+    overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center" },
+    modal: { backgroundColor: "white", padding: 25, borderRadius: 15, width: "90%", shadowColor: "#000", shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 10 },
+    textoModal: { fontSize: 22, fontWeight: "600", marginBottom: 20, textAlign: "center", color: "#333" },
+    input: { borderWidth: 1, borderColor: "#ddd", padding: 12, borderRadius: 8, marginBottom: 15, fontSize: 16, backgroundColor: '#fefefe' },
+    filaBotones: { flexDirection: "row", justifyContent: "space-between", marginTop: 15 },
+    botonAccion: { flex: 1, marginHorizontal: 5, padding: 12, borderRadius: 8, alignItems: "center" },
+    cancelar: { backgroundColor: COLOR_CANCELAR },
+    confirmar: { backgroundColor: COLOR_PRIMARIO },
+    textoAccion: { color: "white", fontWeight: "bold", fontSize: 16 },
 });
 
 export default TablaProveedores;

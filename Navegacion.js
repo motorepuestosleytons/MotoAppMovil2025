@@ -1,94 +1,209 @@
-// Navegacion.js
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
-import AntDesign from '@expo/vector-icons/AntDesign';
+// Navegacion.js (COMPLETO, CORREGIDO Y LIMPIO)
 
-// 🚨 IMPORTACIONES DE VISTAS
-import Clientes from './src/views/Clientes'; 
-import Productos from './src/views/Productos'; 
-import Proveedores from './src/views/Proveedores'; 
-import Compras from './src/views/Compras';    
-import Ventas from './src/views/Ventas';  
-import CatalogoScreen from './src/views/CatalogoScreen'; 
+import React from "react";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons"; 
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { View, Text, StyleSheet } from "react-native";
+import { NavigationContainer } from "@react-navigation/native"; 
+
+// Pantallas
+import CatalogoScreen from "./src/views/CatalogoScreen";
+import CarritoScreen from "./src/views/CarritoScreen";
+import PedidosScreen from "./src/views/PedidosScreen"; // 🚨 NUEVA IMPORTACIÓN
+import Clientes from "./src/views/Clientes";
+import Productos from "./src/views/Productos";
+import Proveedores from "./src/views/Proveedores";
+import Compras from "./src/views/Compras";
+import Ventas from "./src/views/Ventas";
+import LoginScreen from "./src/views/LoginScreen";
 
 const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator(); 
+const MainTabsStack = createNativeStackNavigator();
 
-function ClientesStack({ cerrarSesion }) {
-  return (
-    <Stack.Navigator>
-      <Stack.Screen name="Clientes" options={{ title: 'Gestión de Clientes' }}>
-        {(props) => <Clientes {...props} cerrarSesion={cerrarSesion} />}
-      </Stack.Screen>
-    </Stack.Navigator>
-  );
+// ESTILOS (sin cambios)
+const styles = StyleSheet.create({
+    badge: {
+        position: 'absolute', right: -6, top: -3, backgroundColor: 'red',
+        borderRadius: 9, width: 18, height: 18,
+        justifyContent: 'center', alignItems: 'center',
+    },
+    badgeText: {
+        color: 'white', fontSize: 10, fontWeight: 'bold',
+    },
+});
+
+const ProductosStack = ({ cerrarSesion, onAgregar }) => {
+    return (
+        <Stack.Navigator>
+            <Stack.Screen
+                name="Productos"
+                children={(props) => <Productos {...props} cerrarSesion={cerrarSesion} />}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="Catalogo"
+                children={(props) => <CatalogoScreen {...props} onAgregar={onAgregar} cerrarSesion={cerrarSesion} />}
+                options={{ headerShown: true, title: "Catálogo de Productos" }}
+            />
+        </Stack.Navigator>
+    );
+};
+
+// 1. PESTAÑAS DEL CLIENTE (Corregida la estructura de JSX)
+function MyTabsCliente({ cerrarSesion, carrito, setCarrito, onAgregar, clienteId, clienteEmail, clienteRol }) {
+    const cartCount = carrito.reduce((sum, item) => sum + item.cantidad, 0);
+    return (
+        <Tab.Navigator screenOptions={{ tabBarActiveTintColor: "#7C7CFF" }}>
+            
+            <Tab.Screen
+                name="CatalogoMain"
+                children={(props) => <CatalogoScreen {...props} onAgregar={onAgregar} cerrarSesion={cerrarSesion} />}
+                options={{
+                    title: 'Productos',
+                    tabBarIcon: ({ size, color }) => <Ionicons name="pricetags" color={color} size={size} />,
+                    headerShown: false, 
+                }}
+            />
+
+            {/* 🚨 NUEVA PESTAÑA: MIS PEDIDOS */}
+            <Tab.Screen
+                name="PedidosCliente"
+                children={(props) => (
+                    <PedidosScreen 
+                        {...props} 
+                        clienteId={clienteId} // Se pasa el ID del cliente para filtrar sus pedidos
+                    />
+                )}
+                options={{
+                    title: 'Mis Pedidos',
+                    tabBarIcon: ({ size, color }) => <Ionicons name="archive-outline" color={color} size={size} />,
+                    headerShown: false, 
+                }}
+            />
+            {/* FIN NUEVA PESTAÑA */}
+
+            <Tab.Screen
+                name="Carrito"
+                children={(props) => (
+                    <CarritoScreen 
+                        {...props} 
+                        carrito={carrito} 
+                        setCarrito={setCarrito} 
+                        cerrarSesion={cerrarSesion} 
+                        clienteId={clienteId} 
+                        clienteEmail={clienteEmail} 
+                        clienteRol={clienteRol} 
+                    />
+                )}
+                options={{
+                    tabBarIcon: ({ size, color }) => (
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="cart" color={color} size={size} />
+                            {cartCount > 0 && (
+                                <View style={styles.badge}>
+                                    <Text style={styles.badgeText}>{cartCount}</Text>
+                                </View>
+                            )}
+                        </View>
+                    ),
+                    headerShown: true,
+                }}
+            />
+        </Tab.Navigator>
+    );
 }
 
-function ProductosStack({ cerrarSesion }) {
-  return (
-    <Stack.Navigator>
-      <Stack.Screen name="ProductosPrincipal" options={{ title: 'Gestión de Productos' }}>
-        {(props) => <Productos {...props} cerrarSesion={cerrarSesion} />}
-      </Stack.Screen>
-      <Stack.Screen name="Catalogo" component={CatalogoScreen} options={{ title: 'Catálogo de Productos' }} />
-    </Stack.Navigator>
-  );
+
+// 2. PESTAÑAS DEL ADMINISTRADOR (Corregida la estructura de JSX)
+function MyTabsAdmon({ cerrarSesion, onAgregar }) {
+    return (
+        <Tab.Navigator screenOptions={{ tabBarActiveTintColor: "#7C7CFF" }}>
+            <Tab.Screen
+                name="Clientes"
+                children={(props) => <Clientes {...props} cerrarSesion={cerrarSesion} />}
+                options={{
+                    tabBarIcon: ({ size, color }) => <Ionicons name="people" color={color} size={size} />,
+                    headerShown: false,
+                }}
+            />
+            <Tab.Screen
+                name="ProductosStack"
+                children={(props) => <ProductosStack {...props} cerrarSesion={cerrarSesion} onAgregar={onAgregar} />}
+                options={{
+                    tabBarIcon: ({ size, color }) => <Ionicons name="list" color={color} size={size} />,
+                    headerShown: false,
+                    title: "Productos",
+                }}
+            />
+            <Tab.Screen
+                name="Proveedores"
+                component={Proveedores}
+                options={{
+                    tabBarIcon: ({ size, color }) => <Ionicons name="pricetag" color={color} size={size} />,
+                    headerShown: false,
+                }}
+            />
+            <Tab.Screen
+                name="Compras"
+                component={Compras}
+                options={{
+                    tabBarIcon: ({ size, color }) => <Ionicons name="cart" color={color} size={size} />,
+                    headerShown: false,
+                }}
+            />
+            <Tab.Screen
+                name="Ventas"
+                component={Ventas}
+                options={{
+                    tabBarIcon: ({ size, color }) => <Ionicons name="cash" color={color} size={size} />,
+                    headerShown: false,
+                }}
+            />
+        </Tab.Navigator>
+    );
 }
 
-export default function Navegacion({ cerrarSesion }) {
-  return (
-    <Tab.Navigator
-      initialRouteName="ClientesTab"
-      screenOptions={{
-        tabBarActiveTintColor: '#457b9d',
-        headerShown: false,
-      }}
-    >
-      <Tab.Screen
-        name="ClientesTab"
-        options={{
-          tabBarLabel: 'Clientes',
-          tabBarIcon: ({ color, size }) => <AntDesign name="team" size={size} color={color} />,
-        }}
-      >
-        {() => <ClientesStack cerrarSesion={cerrarSesion} />}
-      </Tab.Screen>
+// 3. FUNCIÓN NAVEGACIÓN PRINCIPAL (Corregida la estructura de JSX)
+export default function Navegacion({ cerrarSesion, carrito, setCarrito, onAgregar, initialRoute, clienteId, clienteEmail, clienteRol }) {
+    return (
+        <NavigationContainer>
+            <MainTabsStack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
+                
+                <MainTabsStack.Screen 
+                    name="Login" 
+                    component={LoginScreen}
+                    options={{ headerShown: false }}
+                />
 
-      <Tab.Screen
-        name="ProductosTab"
-        options={{
-          tabBarLabel: 'Productos',
-          tabBarIcon: ({ color, size }) => <AntDesign name="tag" size={size} color={color} />,
-        }}
-      >
-        {() => <ProductosStack cerrarSesion={cerrarSesion} />}
-      </Tab.Screen>
-
-      <Tab.Screen
-        name="ProveedoresTab"
-        component={Proveedores}
-        options={{
-          tabBarLabel: 'Proveedores',
-          tabBarIcon: ({ color, size }) => <AntDesign name="dropbox" size={size} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="ComprasTab"
-        component={Compras}
-        options={{
-          tabBarLabel: 'Compras',
-          tabBarIcon: ({ color, size }) => <AntDesign name="shopping" size={size} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="VentasTab"
-        component={Ventas}
-        options={{
-          tabBarLabel: 'Ventas',
-          tabBarIcon: ({ color, size }) => <AntDesign name="shopping-cart" size={size} color={color} />,
-        }}
-      />
-    </Tab.Navigator>
-  );
+                <MainTabsStack.Screen 
+                    name="MyTabsCliente"
+                    children={(props) => (
+                        <MyTabsCliente 
+                            {...props} 
+                            cerrarSesion={cerrarSesion} 
+                            carrito={carrito} 
+                            setCarrito={setCarrito} 
+                            onAgregar={onAgregar}
+                            clienteId={clienteId}
+                            clienteEmail={clienteEmail}
+                            clienteRol={clienteRol} 
+                        />
+                    )}
+                />
+                
+                <MainTabsStack.Screen 
+                    name="MyTabsAdmon"
+                    children={(props) => (
+                        <MyTabsAdmon 
+                            {...props} 
+                            cerrarSesion={cerrarSesion} 
+                            onAgregar={onAgregar} 
+                        />
+                    )}
+                />
+            </MainTabsStack.Navigator>
+        </NavigationContainer>
+    );
 }

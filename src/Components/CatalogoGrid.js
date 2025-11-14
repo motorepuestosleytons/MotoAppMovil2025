@@ -1,16 +1,15 @@
-// src/components/CatalogoGrid.js (Ajustado para manejar URLs de imágenes)
+// src/components/CatalogoGrid.js (Ajustado para pasar onAgregar)
 
 import React, { useState, useEffect } from 'react';
 import { FlatList, StyleSheet, View, Text, ActivityIndicator } from 'react-native';
-import Producto from '../Components/Producto'; 
+import Producto from './Producto'; 
 import { db } from '../database/firebaseconfig'; 
 import { collection, getDocs } from 'firebase/firestore'; 
 
-// 💡 URL de Imagen de Relleno (Placeholder)
-// Usamos una URL de Pixabay o de un servicio de relleno simple y estable
 const PLACEHOLDER_IMAGE = 'https://cdn.pixabay.com/photo/2014/11/22/00/36/no-photo-541575_1280.png';
 
-const CatalogoGrid = () => {
+// ⬅️ Recibe onAgregar
+const CatalogoGrid = ({ onAgregar }) => {
     const [productos, setProductos] = useState([]);
     const [cargando, setCargando] = useState(true);
 
@@ -21,18 +20,21 @@ const CatalogoGrid = () => {
             const listaProductos = productosSnapshot.docs.map(doc => {
                 const data = doc.data();
                 
-                // ⬅️ AJUSTE CLAVE: Validación de URL
                 const fotoUrl = (data.foto && data.foto.startsWith('http')) 
                                 ? data.foto 
-                                : PLACEHOLDER_IMAGE; // Si no es válida, usa el placeholder
+                                : PLACEHOLDER_IMAGE; 
+
+                // 💡 Importante: parsear el precio_venta a número aquí para el carrito
+                const precioNumerico = parseFloat(data.precio_venta || 0);
 
                 return {
                     id: doc.id,
                     nombre: data.nombre || 'Producto sin nombre',
-                    imagen: fotoUrl, // Usa la URL validada
-                    precio: `$${(data.precio_venta || 0).toFixed(2)}`,
+                    imagen: fotoUrl, 
+                    precio: `$${precioNumerico.toFixed(2)}`,
+                    precio_venta: precioNumerico, // ⬅️ NUEVO: Precio numérico para el cálculo
                     tiempo: data.stock > 0 ? 'En Stock' : 'Agotado',
-                    favorito: 'heart', 
+                    favorito: 'heart-o', 
                     texto: data.nombre || 'Sin descripción',
                 };
             });
@@ -50,16 +52,17 @@ const CatalogoGrid = () => {
 
     const renderProducto = ({ item }) => (
         <Producto
-            imagen={item.imagen} // Siempre será una URL o el placeholder
+            item={item} // Pasamos el objeto completo para el botón
+            imagen={item.imagen} 
             nombre={item.nombre} 
             precio={item.precio}
             tiempo={item.tiempo}
             texto={item.texto} 
             favorito={item.favorito}
+            onAgregar={onAgregar} // ⬅️ Pasamos la función al hijo
         />
     );
     
-    // ... (El resto del componente sin cambios)
     if (cargando) {
         return (
             <View style={styles.cargandoContainer}>
