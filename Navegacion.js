@@ -1,3 +1,4 @@
+
 // Navegacion.js (CORREGIDO: SIN ALERT, clienteId sincronizado)
 
 import React from "react";

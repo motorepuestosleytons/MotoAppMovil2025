@@ -16,12 +16,24 @@ const Ventas = () => {
   const [ventas, setVentas] = useState([]);
   const [ventaExpandida, setVentaExpandida] = useState(null);
 
-  const estadosPosibles = ["Recibido", "En Proceso", "Entregado", "Cancelado"];
+  // 🚨 ACTUALIZACIÓN CLAVE: Incluir todos los estados, especialmente "Llegó a su Destino" y "Reportado"
+  const estadosPosibles = [
+    "Recibido",
+    "En Proceso",
+    "Enviado", // ⬅️ Estado que el Admin debe seleccionar para activar acción del Cliente
+    "Entregado",
+    "Reportado",
+    "Cancelado",
+  ];
+  
+  // Colores para todos los estados
   const coloresEstado = {
-    Recibido: "#FFC107",
-    "En Proceso": "#17A2B8",
-    Entregado: "#28A745",
-    Cancelado: "#DC3545",
+    Recibido: "#FFC107", // Amarillo (Pedido Recibido)
+    "En Proceso": "#17A2B8", // Turquesa (En ruta/Procesando)
+    "Enviado": "#007bff", // 🚨 Azul (Listo para entrega final)
+    Entregado: "#28A745", // Verde (Confirmado por el Cliente)
+    Reportado: "#DC3545", // Rojo (Problema/Requiere atención Admin)
+    Cancelado: "#6c757d", // Gris (Cancelado)
   };
 
   const cargarDatos = async () => {
@@ -41,6 +53,7 @@ const Ventas = () => {
           }));
           venta.detalle = detalleItems;
 
+          // Utiliza el total almacenado o calcula si es necesario (buena práctica)
           venta.total_calculado =
             parseFloat(venta.total_factura) ||
             detalleItems.reduce((sum, item) => sum + item.total_item, 0);
@@ -49,6 +62,7 @@ const Ventas = () => {
         })
       );
 
+      // Ordenar por fecha de venta, la más reciente primero
       ventasData.sort((a, b) => new Date(b.fecha_venta) - new Date(a.fecha_venta));
       setVentas(ventasData);
     } catch (error) {
@@ -57,10 +71,18 @@ const Ventas = () => {
   };
 
   const actualizarEstadoVenta = async (ventaId, nuevoEstado) => {
+    // Validamos que el estado sea uno de los posibles
     if (!nuevoEstado || !estadosPosibles.includes(nuevoEstado)) {
       Alert.alert("Error", "Seleccione un estado válido.");
       return;
     }
+
+    // El administrador puede cambiar el estado A MENOS que haya sido finalizado por el cliente
+    if (["Entregado", "Reportado"].includes(ventas.find(v => v.id === ventaId)?.estado)) {
+        Alert.alert("Advertencia", "Este pedido ya fue finalizado o reportado por el cliente. No se puede cambiar el estado.");
+        return;
+    }
+
 
     try {
       const ventaRef = doc(db, "Ventas", ventaId);
@@ -113,6 +135,7 @@ const Ventas = () => {
                 { backgroundColor: coloresEstado[estado] },
                 item.estado === estado && styles.botonEstadoActivo,
               ]}
+              // Deshabilita el botón si el estado ya está activo
               onPress={() => actualizarEstadoVenta(item.id, estado)}
               disabled={item.estado === estado}
             >
@@ -145,7 +168,7 @@ const Ventas = () => {
                 }
               >
                 <Text style={styles.tituloItem}>
-                  Venta ID: {item.id}
+                  Venta ID: {item.id.substring(0, 8)}...
                 </Text>
 
                 <Text>
@@ -154,19 +177,21 @@ const Ventas = () => {
                   </Text>
                 </Text>
 
-                <Text>
-                  Fecha: {item.fecha_venta
-                    ? new Date(item.fecha_venta).toLocaleDateString()
-                    : "Fecha no disponible"}
-                </Text>
-
-                <View style={[
-                  styles.estadoBadge,
-                  { backgroundColor: coloresEstado[item.estado] || "#6c757d" }
-                ]}>
-                  <Text style={{ color: "#fff", fontWeight: "bold" }}>
-                    {item.estado || "N/A"}
-                  </Text>
+                <View style={styles.infoRow}>
+                    <Text>
+                      Fecha: {item.fecha_venta
+                        ? new Date(item.fecha_venta).toLocaleDateString()
+                        : "Fecha no disponible"}
+                    </Text>
+                
+                    <View style={[
+                      styles.estadoBadge,
+                      { backgroundColor: coloresEstado[item.estado] || "#6c757d" }
+                    ]}>
+                      <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                        {item.estado || "N/A"}
+                      </Text>
+                    </View>
                 </View>
 
                 <Text style={styles.totalItem}>
@@ -238,6 +263,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 5,
     color: "#007BFF",
+  },
+  // MODIFICACIÓN: Contenedor para alinear fecha y estado
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   totalItem: {
     fontSize: 16,
