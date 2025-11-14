@@ -14,7 +14,7 @@ import { db } from '../database/firebaseconfig';
 
 // IMPORTS CORREGIDOS: minúsculas + sin duplicados
 import GraficoProductos from '../Components/estadisticas/GraficoProductos';
-import GraficoVentasHoy from '../Components/Estadisticas/GraficoVentasHoy';
+import GraficoVentasHoy from '../Components/estadisticas/GraficoVentasHoy';
 import GraficoTopClientes from '../Components/estadisticas/GraficoTopClientes';
 import GraficoProductosMasVendidos from '../Components/estadisticas/GraficoProductosMasVendidos';
 

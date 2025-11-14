@@ -1,81 +1,101 @@
-// src/components/estadisticas/GraficoProductosMasVendidos.js
+// src/components/estadisticas/GraficoVentasHoy.js
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Card } from 'react-native-paper';
-import { collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../database/firebaseconfig';
 import moment from 'moment';
 
-const GraficoProductosMasVendidos = () => {
-  const [topProductos, setTopProductos] = useState([]);
+const GraficoVentasHoy = () => {
+  const [totalHoy, setTotalHoy] = useState(0);
+  const [ventasHoy, setVentasHoy] = useState(0);
+  const [horasData, setHorasData] = useState([]);
 
   useEffect(() => {
     const fetch = async () => {
-      const hoy = moment().startOf('day').toISOString();
-      const detallesRef = collectionGroup(db, 'detalle_venta');
-      const q = query(detallesRef, where('__name__', '>=', ''), where('__name__', '<=', '\uf8ff')); // Todos
-      const snap = await getDocs(q);
-      const detalles = snap.docs.map(doc => doc.data());
+      try {
+        const hoy = moment().startOf('day').toISOString();
+        const q = query(
+          collection(db, 'Ventas'),
+          where('fecha_venta', '>=', hoy)
+        );
 
-      const productosMap = {};
-      detalles.forEach(d => {
-        const nombre = d.nombre_producto || 'Desconocido';
-        productosMap[nombre] = (productosMap[nombre] || 0) + (d.cantidad || 0);
-      });
+        const snap = await getDocs(q);
+        const ventas = snap.docs.map(doc => doc.data());
 
-      const sorted = Object.entries(productosMap)
-        .map(([nombre, cantidad]) => ({ nombre: nombre.substring(0, 14), cantidad }))
-        .sort((a, b) => b.cantidad - a.cantidad)
-        .slice(0, 5);
+        const total = ventas.reduce((sum, v) => sum + (v.total_factura || 0), 0);
+        setTotalHoy(total);
+        setVentasHoy(ventas.length);
 
-      setTopProductos(sorted);
+        const horas = Array(8).fill(0);
+        ventas.forEach(v => {
+          const hora = moment(v.fecha_venta).hour();
+          if (hora >= 8 && hora < 16) {
+            horas[hora - 8] += v.total_factura;
+          }
+        });
+
+        setHorasData(horas.map((v, i) => ({ hora: 8 + i, total: Math.round(v) })));
+      } catch (error) {
+        console.error("Error en ventas hoy:", error);
+      }
     };
     fetch();
   }, []);
 
-  const maxCantidad = Math.max(...topProductos.map(p => p.cantidad), 1);
+  const maxTotal = Math.max(...horasData.map(h => h.total), 1);
 
   return (
     <Card style={styles.card}>
       <Card.Content>
-        <Text style={styles.title}>Top 5 Productos Vendidos</Text>
-        {topProductos.length === 0 ? (
-          <Text style={styles.empty}>Sin ventas</Text>
-        ) : (
-          <View style={styles.list}>
-            {topProductos.map((prod, index) => (
-              <View key={index} style={styles.item}>
-                <Text style={styles.rank}>#{index + 1}</Text>
-                <View style={styles.barWrapper}>
-                  <View
-                    style={[
-                      styles.bar,
-                      { width: `${(prod.cantidad / maxCantidad) * 100}%`, backgroundColor: '#e74c3c' },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.name}>{prod.nombre}</Text>
-                <Text style={styles.amount}>{prod.cantidad} und</Text>
-              </View>
-            ))}
+        <Text style={styles.title}>Ventas de Hoy</Text>
+        <View style={styles.stats}>
+          <View style={styles.stat}>
+            <Text style={styles.label}>Total</Text>
+            <Text style={styles.value}>C$ {totalHoy.toFixed(0)}</Text>
           </View>
-        )}
+          <View style={styles.stat}>
+  <Text style={styles.label}>Ventas</Text>
+            <Text style={styles.value}>{ventasHoy}</Text>
+          </View>
+        </View>
+        <View style={styles.chart}>
+          {horasData.map((item, index) => (
+            <View key={index} style={styles.hourBar}>
+              <Text style={styles.hourLabel}>{item.hora}h</Text>
+              <View style={styles.hourWrapper}>
+                <View
+                  style={[
+                    styles.hourBarFill,
+                    {
+                      height: `${(item.total / maxTotal) * 100}%`,
+                      backgroundColor: '#28a745',
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.hourValue}>C$ {item.total}</Text>
+            </View>
+          ))}
+        </View>
       </Card.Content>
     </Card>
   );
 };
 
 const styles = StyleSheet.create({
-  card: { marginVertical: 12, elevation: 4 },
-  title: { textAlign: 'center', fontWeight: 'bold', fontSize: 20, color: '#2c3e50', marginBottom: 15 },
-  empty: { textAlign: 'center', color: '#999', fontStyle: 'italic' },
-  list: { paddingHorizontal: 10 },
-  item: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  rank: { fontSize: 16, fontWeight: 'bold', width: 30, color: '#c0392b' },
-  barWrapper: { flex: 1, height: 20, backgroundColor: '#fadbd8', borderRadius: 10, overflow: 'hidden', marginHorizontal: 8 },
-  bar: { height: '100%', borderRadius: 8 },
-  name: { fontSize: 13, fontWeight: '600', width: 100, color: '#2c3e50' },
-  amount: { fontSize: 13, fontWeight: 'bold', color: '#e74c3c' },
+  card: { marginVertical: 8 },
+  title: { textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 8 },
+  stats: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 10 },
+  stat: { alignItems: 'center' },
+  label: { fontSize: 12, color: '#666' },
+  value: { fontSize: 16, fontWeight: 'bold', color: '#28a745' },
+  chart: { flexDirection: 'row', justifyContent: 'space-around', height: 100 },
+  hourBar: { alignItems: 'center', width: 30 },
+  hourLabel: { fontSize: 10, marginBottom: 5 },
+  hourWrapper: { width: 20, height: 80, justifyContent: 'flex-end', borderRadius: 2, borderWidth: 1, borderColor: '#eee' },
+  hourBarFill: { width: '100%', borderRadius: 1 },
+  hourValue: { fontSize: 9, marginTop: 2 },
 });
 
-export default GraficoProductosMasVendidos;
+export default GraficoVentasHoy;
