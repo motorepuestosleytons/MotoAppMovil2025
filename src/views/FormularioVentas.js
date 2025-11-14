@@ -17,7 +17,7 @@ import { collection, addDoc, getDocs, onSnapshot } from "firebase/firestore";
 import { Ionicons } from "@expo/vector-icons";
 
 // --- IMPORTAMOS EL MODAL DE ESTADÍSTICAS ---
-import EstadisticasModal from "../views/EstadisticasModal";
+import EstadisticasModal from "./EstadisticasModal";
 
 const FormularioVentas = ({ cargarDatos }) => {
   // --- Estados de Registro de Venta ---
