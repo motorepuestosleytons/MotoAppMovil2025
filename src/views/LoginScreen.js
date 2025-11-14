@@ -3,14 +3,13 @@
 import React, { useState } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet, Alert,
-    ActivityIndicator
+    ActivityIndicator,Image
 } from "react-native"; 
 
 import { db, auth } from "../database/firebaseconfig"; 
 import { collection, getDocs, query, where } from "firebase/firestore"; 
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { Ionicons } from "@expo/vector-icons"; 
-
 
 // FUNCIÓN DUPLICADA para obtener el rol, garantizando velocidad de navegación.
 const getRole = async (email) => {
@@ -86,7 +85,11 @@ export default function LoginScreen({ navigation }) {
         <View style={styles.container}>
             <Text style={styles.title}>Iniciar Sesión</Text>
             
-            <Ionicons name="person-circle-outline" size={80} color="#0097e6" style={{marginBottom: 20}} /> 
+         <Image 
+  source={require('../../assets/icon.png')} 
+  style={styles.logo} 
+  resizeMode="contain"
+/>
             
             <TextInput style={styles.input} placeholder="Correo electrónico" placeholderTextColor="#aaa" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" editable={!cargando} />
             <TextInput style={styles.input} placeholder="Contraseña" placeholderTextColor="#aaa" value={password} onChangeText={setPassword} secureTextEntry editable={!cargando} />
