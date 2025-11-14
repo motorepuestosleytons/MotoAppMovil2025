@@ -1,3 +1,5 @@
+// src/components/FormularioVentas.js (COMPLETO + ESTADÍSTICAS)
+
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -10,36 +12,47 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { db } from "../database/firebaseconfig";
-import { collection, addDoc, getDocs } from "firebase/firestore";
+import { collection, addDoc, getDocs, onSnapshot } from "firebase/firestore";
+import { Ionicons } from "@expo/vector-icons";
+
+// --- IMPORTAMOS EL MODAL DE ESTADÍSTICAS ---
+import EstadisticasModal from "../views/EstadisticasModal";
 
 const FormularioVentas = ({ cargarDatos }) => {
   // --- Estados de Registro de Venta ---
   const [clienteData, setClienteData] = useState(null);
   const [busquedaClienteNombre, setBusquedaClienteNombre] = useState("");
   const [itemsVenta, setItemsVenta] = useState([]);
-
-  // Estados para Modal de Ítem
   const [busquedaProducto, setBusquedaProducto] = useState("");
   const [productoData, setProductoData] = useState(null);
   const [cantidad, setCantidad] = useState("");
-
-  // Estados de Control y Maestros
   const [modalVisible, setModalVisible] = useState(false);
   const [modalDetalleVisible, setModalDetalleVisible] = useState(false);
   const [listaClientes, setListaClientes] = useState([]);
   const [listaProductos, setListaProductos] = useState([]);
-
-  // Estados para la Búsqueda de Ventas (fuera del modal)
   const [busqueda, setBusqueda] = useState("");
   const [resultado, setResultado] = useState(null);
+
+  // --- NUEVO: ESTADO PARA MODAL DE ESTADÍSTICAS ---
+  const [modalStatsVisible, setModalStatsVisible] = useState(false);
+
+  // --- FUNCIÓN PARA LIMPIAR ---
+  const resetFormularioVenta = () => {
+    setClienteData(null);
+    setBusquedaClienteNombre("");
+    setItemsVenta([]);
+    setBusquedaProducto("");
+    setCantidad("");
+    setProductoData(null);
+  };
 
   // --- Carga de Maestros ---
   useEffect(() => {
     const cargarMaestros = async () => {
       try {
-        // Cargar Clientes
         const clientesSnapshot = await getDocs(collection(db, "Clientes"));
         const clientesData = clientesSnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -48,7 +61,6 @@ const FormularioVentas = ({ cargarDatos }) => {
         }));
         setListaClientes(clientesData);
 
-        // Cargar Productos
         const productosSnapshot = await getDocs(collection(db, "Productos"));
         const productosData = productosSnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -63,7 +75,7 @@ const FormularioVentas = ({ cargarDatos }) => {
     cargarMaestros();
   }, []);
 
-  // --- Lógica de Búsqueda de Cliente y Producto (por Nombre) ---
+  // --- Búsqueda Cliente / Producto ---
   const buscarClientePorNombre = (nombreBuscado) => {
     if (!nombreBuscado) return [];
     const nombreLower = nombreBuscado.trim().toLowerCase();
@@ -96,7 +108,7 @@ const FormularioVentas = ({ cargarDatos }) => {
     setBusquedaProducto(producto.nombre);
   };
 
-  // --- Lógica de Carrito y Totales ---
+  // --- Carrito y Totales ---
   const generarFechaActual = () => new Date().toISOString();
   const calcularTotalFactura = () =>
     itemsVenta.reduce((sum, item) => sum + item.total_item, 0);
@@ -144,7 +156,7 @@ const FormularioVentas = ({ cargarDatos }) => {
     setItemsVenta(itemsVenta.filter((_, i) => i !== index));
   };
 
-  // --- Función Principal de Guardado ---
+  // --- Guardar Venta ---
   const guardarVenta = async () => {
     if (!clienteData || itemsVenta.length === 0) {
       Alert.alert(
@@ -158,8 +170,6 @@ const FormularioVentas = ({ cargarDatos }) => {
 
     try {
       const fechaActual = generarFechaActual();
-
-      // 1. Registrar la Venta Principal
       const ventaRef = await addDoc(collection(db, "Ventas"), {
         fecha_venta: fechaActual,
         id_documento_cliente: clienteData.id,
@@ -168,42 +178,28 @@ const FormularioVentas = ({ cargarDatos }) => {
         estado: "Recibido",
       });
 
-      // 2. Registrar cada Detalle de Venta en la Subcolección
-      const detalleCollectionRef = collection(
-        db,
-        `Ventas/${ventaRef.id}/detalle_venta`
-      );
+      const detalleCollectionRef = collection(db, `Ventas/${ventaRef.id}/detalle_venta`);
       for (const item of itemsVenta) {
-        const {
-          id_producto,
-          nombre_producto,
-          precio_unitario,
-          cantidad,
-          total_item,
-        } = item;
         await addDoc(detalleCollectionRef, {
-          id_producto,
-          nombre_producto,
-          precio_unitario,
-          cantidad,
-          total_item,
+          id_producto: item.id_producto,
+          nombre_producto: item.nombre_producto,
+          precio_unitario: item.precio_unitario,
+          cantidad: item.cantidad,
+          total_item: item.total_item,
         });
       }
 
-      // Limpiar y cerrar
-      setClienteData(null);
-      setBusquedaClienteNombre("");
-      setItemsVenta([]);
+      resetFormularioVenta();
       setModalVisible(false);
       cargarDatos();
-      Alert.alert("Éxito", `Venta ${ventaRef.id} registrada correctamente`);
+      Alert.alert("Éxito", `Venta ${ventaRef.id.substring(0, 8)}... registrada`);
     } catch (error) {
       console.error("Error al registrar venta:", error);
       Alert.alert("Error", "Hubo un problema al guardar la venta.");
     }
   };
 
-  // --- Lógica de Búsqueda de Ventas ---
+  // --- Búsqueda de Ventas ---
   useEffect(() => {
     const buscarVenta = async () => {
       if (!busqueda.trim()) {
@@ -213,14 +209,12 @@ const FormularioVentas = ({ cargarDatos }) => {
       try {
         const snapshot = await getDocs(collection(db, "Ventas"));
         const busquedaLower = busqueda.trim().toLowerCase();
-
         const ventaEncontrada = snapshot.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }))
           .find(
             (v) =>
-              v.id === busquedaLower ||
-              (v.nombre_cliente &&
-                v.nombre_cliente.toLowerCase().includes(busquedaLower))
+              v.id.toLowerCase().includes(busquedaLower) ||
+              (v.nombre_cliente && v.nombre_cliente.toLowerCase().includes(busquedaLower))
           );
         setResultado(ventaEncontrada || null);
       } catch (error) {
@@ -230,17 +224,22 @@ const FormularioVentas = ({ cargarDatos }) => {
     buscarVenta();
   }, [busqueda]);
 
-  // -------------------------------------------------------------------
-
   return (
     <View style={styles.container}>
-      {/* Botón abrir modal de registro */}
-      <View style={styles.botonRegistroContainer}>
+
+      {/* --- BOTONES: ESTADÍSTICAS + REGISTRAR VENTA --- */}
+      <View style={styles.headerButtons}>
+        <TouchableOpacity
+          style={styles.botonEstadisticas}
+          onPress={() => setModalStatsVisible(true)}
+        >
+          <Ionicons name="stats-chart" size={20} color="#fff" />
+          <Text style={styles.textoBoton}>Estadísticas</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.botonRegistro}
-          onPress={() => {
-            setModalVisible(true);
-          }}
+          onPress={() => setModalVisible(true)}
         >
           <Text style={styles.textoBoton}>Registrar Nueva Venta</Text>
         </TouchableOpacity>
@@ -254,11 +253,11 @@ const FormularioVentas = ({ cargarDatos }) => {
         onChangeText={setBusqueda}
       />
 
-      {/* Resultado de búsqueda de Venta */}
+      {/* Resultado de búsqueda */}
       {resultado ? (
         <View style={styles.resultado}>
           <Text style={{ fontWeight: "bold" }}>
-            ID Venta: <Text style={{ fontWeight: "normal" }}>{resultado.id}</Text>
+            ID Venta: <Text style={{ fontWeight: "normal" }}>{resultado.id.substring(0, 8)}...</Text>
           </Text>
           <Text style={{ fontWeight: "bold" }}>
             Cliente: <Text style={{ fontWeight: "bold" }}>{resultado.nombre_cliente}</Text>
@@ -271,7 +270,13 @@ const FormularioVentas = ({ cargarDatos }) => {
         <Text style={styles.noEncontrado}>No se encontró la venta</Text>
       ) : null}
 
-      {/* MODAL DE REGISTRO DE VENTA COMPLETA... */}
+      {/* --- MODAL DE ESTADÍSTICAS (2 GRÁFICOS) --- */}
+      <EstadisticasModal
+        visible={modalStatsVisible}
+        onClose={() => setModalStatsVisible(false)}
+      />
+
+      {/* --- MODAL REGISTRO DE VENTA (TU CÓDIGO ORIGINAL) --- */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalFondo}>
           <KeyboardAvoidingView
@@ -365,7 +370,7 @@ const FormularioVentas = ({ cargarDatos }) => {
                       style={styles.itemEliminarBoton}
                       onPress={() => eliminarItemVenta(index)}
                     >
-                      <Text style={styles.eliminarItemTexto}>Eliminar</Text>
+                      <Text style={styles.eliminarItemTexto}>Trash</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -380,7 +385,10 @@ const FormularioVentas = ({ cargarDatos }) => {
               <View style={styles.botonesContainer}>
                 <TouchableOpacity
                   style={[styles.boton, styles.botonIzquierda]}
-                  onPress={() => setModalVisible(false)}
+                  onPress={() => {
+                    resetFormularioVenta();
+                    setModalVisible(false);
+                  }}
                 >
                   <Text style={styles.textoBoton}>Cancelar</Text>
                 </TouchableOpacity>
@@ -396,12 +404,8 @@ const FormularioVentas = ({ cargarDatos }) => {
         </View>
       </Modal>
 
-      {/* MODAL PARA AGREGAR PRODUCTO... */}
-      <Modal
-        visible={modalDetalleVisible}
-        animationType="slide"
-        transparent={true}
-      >
+      {/* --- MODAL AGREGAR PRODUCTO --- */}
+      <Modal visible={modalDetalleVisible} animationType="slide" transparent={true}>
         <View style={styles.modalFondo}>
           <View style={styles.modalContenidoSmall}>
             <Text style={styles.tituloModal}>Agregar Producto</Text>
@@ -413,7 +417,6 @@ const FormularioVentas = ({ cargarDatos }) => {
               onChangeText={setBusquedaProducto}
             />
 
-            {/* Resultados de Producto */}
             {busquedaProducto.trim().length > 0 &&
               productoData?.nombre !== busquedaProducto && (
                 resultadosProducto.length > 0 ? (
@@ -437,7 +440,6 @@ const FormularioVentas = ({ cargarDatos }) => {
                 )
               )}
 
-            {/* Tarjeta de Producto SELECCIONADO */}
             {productoData ? (
               <View style={styles.cardProducto}>
                 <Text style={styles.cardTitle}>Producto Elegido</Text>
@@ -467,7 +469,12 @@ const FormularioVentas = ({ cargarDatos }) => {
             <View style={styles.botonesContainer}>
               <TouchableOpacity
                 style={[styles.boton, styles.botonIzquierda]}
-                onPress={() => setModalDetalleVisible(false)}
+                onPress={() => {
+                  setBusquedaProducto("");
+                  setCantidad("");
+                  setProductoData(null);
+                  setModalDetalleVisible(false);
+                }}
               >
                 <Text style={styles.textoBoton}>Cerrar</Text>
               </TouchableOpacity>
@@ -488,6 +495,33 @@ const FormularioVentas = ({ cargarDatos }) => {
 
 const styles = StyleSheet.create({
   container: { paddingBottom: 0 },
+
+  // --- NUEVO: BOTONES SUPERIORES ---
+  headerButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 15,
+    paddingHorizontal: 10,
+  },
+  botonEstadisticas: {
+    flexDirection: "row",
+    backgroundColor: "#6f42c1",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 0.48,
+  },
+  botonRegistro: {
+    backgroundColor: "#007BFF",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    flex: 0.48,
+  },
+  textoBoton: { color: "#fff", fontWeight: "bold", marginLeft: 5 },
+
+  // --- RESTO DE TUS ESTILOS ORIGINALES ---
   subtitulo: {
     fontSize: 18,
     fontWeight: "bold",
@@ -501,21 +535,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     padding: 10,
     borderRadius: 5,
+    marginHorizontal: 10,
   },
-
-  botonRegistroContainer: {
-    marginBottom: 10,
-    alignItems: "center",
-  },
-  botonRegistro: {
-    backgroundColor: "#007BFF",
-    padding: 12,
-    borderRadius: 5,
-    width: "70%",
-    alignItems: "center",
-  },
-  textoBoton: { color: "#fff", fontWeight: "bold" },
-
   botonesContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -553,7 +574,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#007BFF",
   },
-
   resultado: {
     marginVertical: 10,
     padding: 10,
@@ -561,6 +581,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     borderWidth: 1,
     borderColor: "#ff9800",
+    marginHorizontal: 10,
   },
   noEncontrado: { textAlign: "center", marginTop: 10, color: "gray" },
   resultadoBusqueda: {
@@ -579,8 +600,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   error: { color: "red", marginVertical: 10, padding: 5, textAlign: "center" },
-
-  // --- TARJETAS ---
   cardCliente: {
     backgroundColor: "#E6F7FF",
     padding: 15,
@@ -612,7 +631,6 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 3,
   },
-
   detalleHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -621,8 +639,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   botonAgregar: { backgroundColor: "#FFC107", padding: 5, borderRadius: 5 },
-
-  // --- CARRITO ---
   carritoItem: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -655,16 +671,15 @@ const styles = StyleSheet.create({
     color: "#28A745",
   },
   itemEliminarBoton: {
-    flex: 0.5,
+    width: 30,
     alignItems: "center",
-    paddingLeft: 10,
+    justifyContent: 'center',
   },
   eliminarItemTexto: {
-    color: "red",
-    fontSize: 18,
+    color: "#DC3545",
+    fontSize: 20,
+    fontWeight: 'bold',
   },
-
-  // --- TOTAL FACTURA ---
   totalFactura: {
     fontSize: 22,
     fontWeight: "bold",

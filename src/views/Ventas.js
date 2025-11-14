@@ -1,3 +1,5 @@
+// src/views/Ventas.js (Vista del Administrador)
+
 import React, { useEffect, useState } from "react";
 import {
   View,
