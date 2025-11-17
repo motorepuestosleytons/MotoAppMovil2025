@@ -1,44 +1,52 @@
 // src/components/ListaCategorias.js
-
 import React from 'react';
-import { ScrollView, StyleSheet, View, Text } from 'react-native';
-import Categoria from '../Components/Categoria'; // Importa tu componente Categoria
+import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import Categoria from './Categoria';
 
-const ListaCategorias = ({ categorias }) => {
-    // Si no hay categorías, no muestra nada
-    if (!categorias || categorias.length === 0) {
-        return null;
-    }
-    
+const ListaCategorias = ({ categorias, seleccionada, onSeleccionar }) => {
     return (
-        <View style={styles.container}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {categorias.map((cat) => (
-                    <View key={cat.id} style={styles.categoriaWrapper}>
-                        <Categoria
-                            nombre={cat.nombreIcono} // Icono de FontAwesome5
-                            texto={cat.texto}
+        <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContainer}
+        >
+            {categorias.map(cat => {
+                const esActiva = seleccionada === cat.id;
+
+                return (
+                    <TouchableOpacity
+                        key={cat.id}
+                        onPress={() => onSeleccionar(cat.id)}
+                        style={[
+                            styles.categoriaWrapper,
+                            esActiva && styles.categoriaActivaWrapper
+                        ]}
+                        activeOpacity={0.7} // Suave al tocar
+                    >
+                        <Categoria 
+                            nombre={cat.nombreIcono} 
+                            texto={cat.texto} 
+                            activa={esActiva}
                         />
-                    </View>
-                ))}
-            </ScrollView>
-        </View>
+                    </TouchableOpacity>
+                );
+            })}
+        </ScrollView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        height: 100, // Altura adecuada para los componentes Categoria
-        paddingVertical: 10,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+    scrollContainer: {
+        paddingHorizontal: 10,
+        paddingVertical: 8,
     },
     categoriaWrapper: {
-        marginLeft: 10,
-        marginRight: 5,
-        // Los estilos de Categoria.js ya definen el resto
-    }
+        marginHorizontal: 6,
+    },
+    categoriaActivaWrapper: {
+        // Solo cambia estilo del wrapper si quieres
+        // Aquí no hacemos nada visual extra
+    },
 });
 
 export default ListaCategorias;

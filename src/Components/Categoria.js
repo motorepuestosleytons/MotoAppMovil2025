@@ -1,41 +1,60 @@
 // src/components/Categoria.js
-
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import React from 'react'
+import React from 'react';
 
-export default function Categoria({nombre,texto}) {
+export default function Categoria({ nombre, texto, activa = false }) {
     return (
-        <View style={styles.container}>
-            {/* 'nombre' es el nombre del icono de FontAwesome5 (ej: 'laptop', 'wrench') */}
-            <FontAwesome5 name={nombre} size={24} color="#007BFF" /> 
-            <Text style={styles.text}>{texto}</Text>
+        <View style={[
+            styles.container,
+            activa && styles.containerActiva
+        ]}>
+            <FontAwesome5 
+                name={nombre} 
+                size={32} 
+                color={activa ? "#FFF" : "#007BFF"} 
+            />
+            <Text style={[
+                styles.text,
+                activa && styles.textActiva
+            ]}>
+                {texto}
+            </Text>
         </View>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
     container: {
-        // Estilo básico para que se vean bien en un ScrollView horizontal
-        padding: 10,
-        marginHorizontal: 5,
+        padding: 19,
         backgroundColor: "#fff",
-        borderRadius: 10,
+        borderRadius: 25,
         alignItems: 'center',
         justifyContent: 'center',
-        height: 80, 
-        width: 100,
+        minWidth: 95,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 3,
+        shadowOpacity: 0.15,
+        shadowRadius: 5,
+        elevation: 5,
+        borderWidth: 1,
+        borderColor: '#eee',
+        marginTop:15
+    },
+    containerActiva: {
+        backgroundColor: "#007BFF",
+        borderColor: "#007BFF",
+        shadowOpacity: 0.25,
     },
     text: {
-        fontWeight: 'bold',
-        color: '#667eea',
-        marginTop: 5,
+        fontWeight: '600',
+        color: '#333',
+        marginTop: 6,
+        fontSize: 13,
         textAlign: 'center',
-        fontSize: 12,
+    },
+    textActiva: {
+        color: '#FFF',
+        fontWeight: '700',
     },
 });

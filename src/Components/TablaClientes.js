@@ -1,4 +1,4 @@
-// TablaClientes.js (BÚSQUEDA EN VIVO DENTRO DE LA TABLA)
+// TablaClientes.js (CON LAS MISMAS VALIDACIONES QUE REGISTRAR CLIENTE)
 import React, { useState, useEffect } from "react";
 import {
     View,
@@ -8,6 +8,7 @@ import {
     TouchableOpacity,
     Modal,
     TextInput,
+    Alert,
 } from "react-native";
 import BotonEliminarCliente from "./BotonEliminarCliente.js";
 import { Ionicons } from "@expo/vector-icons";
@@ -40,7 +41,6 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
         setClientesFiltrados(filtrados);
     }, [busqueda, clientes]);
 
-    // === RECARGAR CUANDO SE ELIMINA O EDITA ===
     useEffect(() => {
         setClientesFiltrados(clientes);
     }, [clientes]);
@@ -56,8 +56,18 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
     };
 
     const guardarCambios = () => {
+        if (!datosEditados.nombre.trim() || !datosEditados.direccion.trim() || !datosEditados.telefono.trim()) {
+            Alert.alert("Atención", "Complete todos los campos.");
+            return;
+        }
+
         if (clienteSeleccionado) {
-            editarCliente({ ...clienteSeleccionado, ...datosEditados });
+            editarCliente({ 
+                id: clienteSeleccionado.id,
+                nombre: datosEditados.nombre.trim(),
+                direccion: datosEditados.direccion.trim(),
+                telefono: datosEditados.telefono.trim(),
+            });
         }
         setVisible(false);
     };
@@ -125,34 +135,43 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
                 </View>
             </ScrollView>
 
-            {/* MODAL DE EDICIÓN */}
+            {/* MODAL DE EDICIÓN CON LAS MISMAS VALIDACIONES QUE REGISTRAR */}
             <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
                 <View style={styles.overlay}>
                     <View style={styles.modal}>
-                        <Text style={styles.textoModal}>Editar Cliente: {datosEditados.nombre}</Text>
+                        <Text style={styles.textoModal}>Editar Cliente: {datosEditados.nombre || "Sin nombre"}</Text>
 
                         <ScrollView style={{ width: "100%" }}>
+                            {/* NOMBRE: SOLO LETRAS Y ESPACIOS */}
                             <TextInput
                                 style={styles.input}
                                 placeholder="Nombre"
-                                placeholderTextColor="#999"
                                 value={datosEditados.nombre}
-                                onChangeText={(v) => setDatosEditados({ ...datosEditados, nombre: v })}
+                                onChangeText={(text) => setDatosEditados({ ...datosEditados, nombre: text.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '') })}
                             />
+
+                            {/* DIRECCIÓN: LETRAS, NÚMEROS Y CARACTERES COMUNES */}
                             <TextInput
                                 style={styles.input}
                                 placeholder="Dirección"
-                                placeholderTextColor="#999"
                                 value={datosEditados.direccion}
-                                onChangeText={(v) => setDatosEditados({ ...datosEditados, direccion: v })}
+                                onChangeText={(text) => setDatosEditados({ ...datosEditados, direccion: text.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s,#.-]/g, '') })}
                             />
+
+                            {/* TELÉFONO: 8888-8888 AUTOMÁTICO */}
                             <TextInput
                                 style={styles.input}
                                 placeholder="Teléfono"
-                                placeholderTextColor="#999"
                                 value={datosEditados.telefono}
-                                onChangeText={(v) => setDatosEditados({ ...datosEditados, telefono: v })}
+                                onChangeText={(text) => {
+                                    let limpio = text.replace(/[^0-9]/g, '');
+                                    if (limpio.length > 4) {
+                                        limpio = limpio.slice(0, 4) + '-' + limpio.slice(4, 8);
+                                    }
+                                    setDatosEditados({ ...datosEditados, telefono: limpio.slice(0, 9) });
+                                }}
                                 keyboardType="phone-pad"
+                                maxLength={9}
                             />
                         </ScrollView>
 
@@ -306,8 +325,6 @@ const styles = StyleSheet.create({
         marginBottom: 15,
         fontSize: 16,
         backgroundColor: '#fefefe',
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     filaBotones: {
         flexDirection: "row",

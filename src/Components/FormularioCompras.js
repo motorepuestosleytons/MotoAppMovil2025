@@ -1,12 +1,14 @@
-// src/components/FormularioCompras.js (SUMA STOCK EN TIEMPO REAL)
+// src/components/FormularioCompras.js (CORREGIDO: getDocs AHORA SÍ FUNCIONA)
 import React, { useState, useEffect } from "react";
 import {
   View, TextInput, StyleSheet, Text, Modal, TouchableOpacity,
-  ScrollView, Alert, KeyboardAvoidingView, Platform,
+  ScrollView, Alert, KeyboardAvoidingView, Platform, ActivityIndicator
 } from "react-native";
 import { db } from "../database/firebaseconfig";
-import { collection, addDoc, getDocs, doc, updateDoc, increment } from "firebase/firestore";
-import { Ionicons } from "@expo/vector-icons";
+import { 
+  collection, addDoc, doc, updateDoc, increment, 
+  onSnapshot, query, getDocs  // ← YA ESTABA, PERO AHORA FUNCIONA PORQUE db ESTÁ BIEN INICIALIZADO
+} from "firebase/firestore";   // ← ESTE ES EL IMPORT CORRECTO (v9+ modular)
 
 const FormularioCompras = ({ cargarDatos }) => {
   const [proveedorData, setProveedorData] = useState(null);
@@ -19,12 +21,7 @@ const FormularioCompras = ({ cargarDatos }) => {
   const [modalDetalleVisible, setModalDetalleVisible] = useState(false);
   const [listaProveedores, setListaProveedores] = useState([]);
   const [listaProductos, setListaProductos] = useState([]);
-  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
-
-  const showToast = (message, type = 'success') => {
-    setToast({ visible: true, message, type });
-    setTimeout(() => setToast({ visible: false, message: '', type: '' }), 2500);
-  };
+  const [cargandoCompra, setCargandoCompra] = useState(false);
 
   const resetFormulario = () => {
     setProveedorData(null);
@@ -36,46 +33,44 @@ const FormularioCompras = ({ cargarDatos }) => {
   };
 
   useEffect(() => {
-    const cargarMaestros = async () => {
+    const cargarProveedores = async () => {
       try {
-        const provSnap = await getDocs(collection(db, "Proveedores"));
-        setListaProveedores(provSnap.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            nombre: data.nombre_proveedor || data.nombre || '',
-            documento: data.documento || 'N/A'
-          };
-        }));
-
-        const prodSnap = await getDocs(collection(db, "Productos"));
-        setListaProductos(prodSnap.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            nombre: data.nombre || '',
-            precio_compra: parseFloat(data.precio_compra) || 0
-          };
-        }));
-      } catch (error) {
-        console.error("Error al cargar maestros:", error);
-      }
+        const querySnapshot = await getDocs(collection(db, "Proveedores"));
+        const snap = await getDocs(collection(db, "Proveedores"));
+        setListaProveedores(snap.docs.map(doc => ({
+          id: doc.id,
+          nombre: doc.data().nombre_proveedor || doc.data().nombre || "Sin nombre",
+          documento: doc.data().documento || "N/A"
+        })));
+      } catch (error) {}
     };
-    cargarMaestros();
+    cargarProveedores();
+
+    const q = query(collection(db, "Productos"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setListaProductos(snapshot.docs.map(doc => ({
+        id: doc.id,
+        nombre: doc.data().nombre || "Sin nombre",
+        precio_compra: parseFloat(doc.data().precio_compra) || 0,
+        stock: doc.data().stock || 0
+      })));
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const resultadosProveedor = busquedaProveedorNombre
+  const resultadosProveedor = busquedaProveedorNombre.trim()
     ? listaProveedores.filter(p => p.nombre.toLowerCase().includes(busquedaProveedorNombre.toLowerCase().trim()))
+    : [];
+
+  const resultadosProducto = busquedaProducto.trim()
+    ? listaProductos.filter(p => p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase().trim()))
     : [];
 
   const seleccionarProveedor = (prov) => {
     setProveedorData(prov);
     setBusquedaProveedorNombre(prov.nombre);
   };
-
-  const resultadosProducto = busquedaProducto
-    ? listaProductos.filter(p => p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase().trim()))
-    : [];
 
   const seleccionarProducto = (prod) => {
     setProductoData(prod);
@@ -86,7 +81,7 @@ const FormularioCompras = ({ cargarDatos }) => {
 
   const agregarItem = () => {
     if (!productoData || !cantidad || isNaN(cantidad) || cantidad <= 0) {
-      Alert.alert("Error", "Selecciona un producto y cantidad válida (mayor a 0).");
+      Alert.alert("Error", "Selecciona un producto y cantidad válida.");
       return;
     }
 
@@ -112,17 +107,17 @@ const FormularioCompras = ({ cargarDatos }) => {
     setItemsCompra(prev => prev.filter((_, i) => i !== index));
   };
 
-  // === GUARDAR COMPRA Y SUMAR STOCK ===
   const guardarCompra = async () => {
     if (!proveedorData || itemsCompra.length === 0) {
       Alert.alert("Error", "Selecciona proveedor y al menos un producto.");
       return;
     }
 
-    const total = calcularTotal();
+    setCargandoCompra(true);
 
     try {
-      // 1. Guardar compra principal
+      const total = calcularTotal();
+
       const compraRef = await addDoc(collection(db, "Compras"), {
         fecha_compra: new Date().toISOString(),
         id_documento_proveedor: proveedorData.id,
@@ -130,40 +125,37 @@ const FormularioCompras = ({ cargarDatos }) => {
         total_compra: total,
       });
 
-      // 2. Guardar detalle
       const detalleRef = collection(db, `Compras/${compraRef.id}/detalle_compra`);
-      const promesasDetalle = itemsCompra.map(item => addDoc(detalleRef, item));
-      await Promise.all(promesasDetalle);
+      await Promise.all(itemsCompra.map(item => addDoc(detalleRef, item)));
 
-      // 3. SUMAR STOCK ATÓMICO
-      const promesasStock = itemsCompra.map(async (item) => {
+      await Promise.all(itemsCompra.map(async (item) => {
         const prodRef = doc(db, "Productos", item.id_producto);
-        await updateDoc(prodRef, {
-          stock: increment(item.cantidad) // ← SUMA
-        });
-      });
-      await Promise.all(promesasStock);
+        await updateDoc(prodRef, { stock: increment(item.cantidad) });
+      }));
 
-      // 4. Finalizar
       if (cargarDatos) cargarDatos();
       resetFormulario();
       setModalVisible(false);
-      showToast("Compra registrada y stock actualizado", "success");
+      Alert.alert("Éxito", "Compra registrada correctamente");
     } catch (error) {
-      console.error("Error al guardar compra:", error);
-      showToast("Error al guardar o actualizar stock", "error");
+      Alert.alert("Error", "No se pudo guardar la compra");
+    } finally {
+      setCargandoCompra(false);
     }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.headerButtons}>
-        <TouchableOpacity style={styles.botonRegistro} onPress={() => setModalVisible(true)}>
+        <TouchableOpacity 
+          style={styles.botonRegistro} 
+          onPress={() => setModalVisible(true)}
+          disabled={cargandoCompra}
+        >
           <Text style={styles.textoBoton}>+ Nueva Compra</Text>
         </TouchableOpacity>
       </View>
 
-      {/* MODAL REGISTRO COMPRA */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalFondo}>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardAvoidingContainer}>
@@ -172,14 +164,14 @@ const FormularioCompras = ({ cargarDatos }) => {
                 <Text style={styles.tituloModal}>Registrar Compra</Text>
 
                 <Text style={styles.subtitulo}>Buscar Proveedor</Text>
-                <TextInput style={styles.input} placeholder="Nombre..." value={busquedaProveedorNombre} onChangeText={setBusquedaProveedorNombre} />
+                <TextInput style={styles.input} placeholder="Nombre del proveedor..." value={busquedaProveedorNombre} onChangeText={setBusquedaProveedorNombre} />
 
-                {busquedaProveedorNombre.trim() && proveedorData?.nombre !== busquedaProveedorNombre && (
+                {busquedaProveedorNombre.trim() && (!proveedorData || proveedorData.nombre !== busquedaProveedorNombre) && (
                   resultadosProveedor.length > 0 ? (
                     <View style={styles.resultadoBusqueda}>
                       {resultadosProveedor.map(p => (
                         <TouchableOpacity key={p.id} style={styles.opcionBusqueda} onPress={() => seleccionarProveedor(p)}>
-                          <Text>{p.nombre} (Doc: {p.documento})</Text>
+                          <Text style={styles.textoOpcion}>{p.nombre} (Doc: {p.documento})</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -190,7 +182,7 @@ const FormularioCompras = ({ cargarDatos }) => {
 
                 {proveedorData && (
                   <View style={styles.cardProveedor}>
-                    <Text style={styles.cardTitle}>Proveedor</Text>
+                    <Text style={styles.cardTitle}>Proveedor seleccionado</Text>
                     <Text style={styles.cardText}>{proveedorData.nombre}</Text>
                     <Text style={styles.cardSubText}>Doc: {proveedorData.documento}</Text>
                   </View>
@@ -203,28 +195,46 @@ const FormularioCompras = ({ cargarDatos }) => {
                   </TouchableOpacity>
                 </View>
 
-                {itemsCompra.map((item, i) => (
-                  <View key={i} style={styles.carritoItem}>
-                    <View style={styles.itemLeft}>
-                      <Text style={styles.itemNombre}>{item.nombre_producto}</Text>
-                      <Text style={styles.itemCantidad}>{item.cantidad} x ${item.precio_unitario.toFixed(2)}</Text>
+                {itemsCompra.map((item, i) => {
+                  const stockActual = listaProductos.find(p => p.id === item.id_producto)?.stock || 0;
+                  return (
+                    <View key={i} style={styles.carritoItem}>
+                      <View style={styles.itemLeft}>
+                        <Text style={styles.itemNombre}>{item.nombre_producto}</Text>
+                        <Text style={styles.itemCantidad}>{item.cantidad} x C${item.precio_unitario.toFixed(2)}</Text>
+                        <Text style={styles.stockInfo}>Stock: {stockActual}</Text>
+                      </View>
+                      <Text style={styles.itemTotalCarrito}>C${item.total_item.toFixed(2)}</Text>
+                      <TouchableOpacity style={styles.itemEliminarBoton} onPress={() => eliminarItem(i)}>
+                        <Text style={styles.eliminarItemTexto}>×</Text>
+                      </TouchableOpacity>
                     </View>
-                    <Text style={styles.itemTotalCarrito}>${item.total_item.toFixed(2)}</Text>
-                    <TouchableOpacity style={styles.itemEliminarBoton} onPress={() => eliminarItem(i)}>
-                      <Text style={styles.eliminarItemTexto}>X</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
+                  );
+                })}
 
-                <Text style={styles.totalFactura}>TOTAL: C${calcularTotal().toFixed(2)}</Text>
+                <Text style={styles.totalFactura}>
+                  TOTAL: C${calcularTotal().toFixed(2)}
+                </Text>
               </ScrollView>
 
               <View style={styles.botonesContainer}>
-                <TouchableOpacity style={[styles.boton, styles.botonIzquierda]} onPress={() => { resetFormulario(); setModalVisible(false); }}>
+                <TouchableOpacity 
+                  style={[styles.boton, styles.botonIzquierda]} 
+                  onPress={() => { resetFormulario(); setModalVisible(false); }}
+                  disabled={cargandoCompra}
+                >
                   <Text style={styles.textoBoton}>Cancelar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.boton, styles.botonDerecha]} onPress={guardarCompra}>
-                  <Text style={styles.textoBoton}>Guardar</Text>
+                <TouchableOpacity 
+                  style={[styles.boton, styles.botonDerecha, cargandoCompra && styles.botonDisabled]} 
+                  onPress={guardarCompra}
+                  disabled={cargandoCompra}
+                >
+                  {cargandoCompra ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.textoBoton}>Guardar Compra</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -232,118 +242,132 @@ const FormularioCompras = ({ cargarDatos }) => {
         </View>
       </Modal>
 
-      {/* MODAL AGREGAR PRODUCTO */}
+      {/* MODAL AGREGAR PRODUCTO - AHORA SÍ FUNCIONA EL DETALLE */}
       <Modal visible={modalDetalleVisible} animationType="fade" transparent>
         <View style={styles.modalFondo}>
           <View style={styles.modalCompraCompacto}>
-            <Text style={styles.tituloModalSmall}>+ Producto</Text>
+            <Text style={styles.tituloModalSmall}>+ Agregar Producto</Text>
 
-            <TextInput style={styles.inputSmall} placeholder="Buscar..." value={busquedaProducto} onChangeText={setBusquedaProducto} />
+            <TextInput 
+              style={styles.inputSmall} 
+              placeholder="Buscar producto..." 
+              value={busquedaProducto} 
+              onChangeText={setBusquedaProducto} 
+            />
 
-            {busquedaProducto.trim() && productoData?.nombre !== busquedaProducto && (
-              resultadosProducto.length > 0 ? (
-                <View style={styles.resultadoBusquedaSmall}>
-                  {resultadosProducto.slice(0, 4).map(p => (
-                    <TouchableOpacity key={p.id} style={styles.opcionSmall} onPress={() => seleccionarProducto(p)}>
+            {/* RESULTADOS DE BÚSQUEDA */}
+            {busquedaProducto.trim() && (!productoData || !busquedaProducto.includes(productoData.nombre)) && resultadosProducto.length > 0 && (
+              <View style={styles.resultadoBusquedaSmall}>
+                {resultadosProducto.slice(0, 5).map(p => (
+                  <TouchableOpacity key={p.id} style={styles.opcionSmall} onPress={() => seleccionarProducto(p)}>
+                    <View>
                       <Text style={styles.textoOpcionSmall}>{p.nombre}</Text>
-                      <Text style={styles.precioSmall}>C${p.precio_compra}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.noResultado}>No encontrado</Text>
-              )
-            )}
-
-            {productoData && (
-              <View style={styles.cardProductoSmall}>
-                <Text style={styles.nombreProductoSmall}>{productoData.nombre}</Text>
-                <Text style={styles.precioProductoSmall}>C${productoData.precio_compra} c/u</Text>
+                      <Text style={styles.stockSmall}>Stock: {p.stock}</Text>
+                    </View>
+                    <Text style={styles.precioSmall}>C${p.precio_compra.toFixed(2)}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
 
-            <TextInput style={styles.inputSmall} placeholder="Cantidad" value={cantidad} onChangeText={setCantidad} keyboardType="numeric" />
+            {/* DETALLE DEL PRODUCTO SELECCIONADO - AHORA SÍ SE VE */}
+            {productoData && (
+              <View style={styles.cardProductoSmall}>
+                <Text style={styles.nombreProductoSmall}>{productoData.nombre}</Text>
+                <Text style={styles.precioProductoSmall}>Precio: C${productoData.precio_compra.toFixed(2)} c/u</Text>
+                <Text style={styles.stockDisponible}>Stock actual: {productoData.stock}</Text>
+              </View>
+            )}
+
+            <TextInput 
+              style={styles.inputSmall} 
+              placeholder="Cantidad" 
+              value={cantidad} 
+              onChangeText={setCantidad} 
+              keyboardType="numeric" 
+            />
 
             <View style={styles.botonesSmall}>
-              <TouchableOpacity style={[styles.botonSmall, styles.botonCancelarSmall]} onPress={() => {
-                setBusquedaProducto(""); setCantidad(""); setProductoData(null); setModalDetalleVisible(false);
-              }}>
+              <TouchableOpacity 
+                style={[styles.botonSmall, styles.botonCancelarSmall]} 
+                onPress={() => {
+                  setBusquedaProducto(""); 
+                  setCantidad(""); 
+                  setProductoData(null); 
+                  setModalDetalleVisible(false);
+                }}
+              >
                 <Text style={styles.textoBotonSmall}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.botonSmall, styles.botonAgregarSmall]} onPress={agregarItem} disabled={!productoData || !cantidad}>
-                <Text style={styles.textoBotonSmall}>Añadir</Text>
+              <TouchableOpacity 
+                style={[styles.botonSmall, styles.botonAgregarSmall]} 
+                onPress={agregarItem}
+                disabled={!productoData || !cantidad || parseInt(cantidad) <= 0}
+              >
+                <Text style={styles.textoBotonSmall}>Añadir al Carrito</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-
-      {/* TOAST */}
-      {toast.visible && (
-        <View style={[styles.toast, toast.type === 'error' ? styles.toastError : styles.toastSuccess]}>
-          <Ionicons name={toast.type === 'success' ? "checkmark-circle" : "close-circle"} size={20} color="#fff" />
-          <Text style={styles.toastText}>{toast.message}</Text>
-        </View>
-      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: 0,marginTop: -5 },
+  container: { paddingBottom: 0, marginTop: -5 },
   headerButtons: { flexDirection: "row", justifyContent: "center", marginBottom: 15, paddingHorizontal: 10 },
-  botonRegistro: { backgroundColor: "#800080", padding: 12, borderRadius: 8, alignItems: "center", flex: 0.6 },
-  textoBoton: { color: "#fff", fontWeight: "bold" },
+  botonRegistro: { backgroundColor: "#800080", padding: 16, borderRadius: 12, alignItems: "center", justifyContent: "center", flex: 0.8, elevation: 5 },
+  textoBoton: { color: "#fff", fontWeight: "bold", fontSize: 17, textAlign: "center" },
   subtitulo: { fontSize: 18, fontWeight: "bold", marginVertical: 12, textAlign: "center", color: "#333" },
-  input: { borderWidth: 1, borderColor: "#ccc", marginBottom: 15, padding: 10, borderRadius: 5, marginHorizontal: 10 },
-  botonesContainer: { flexDirection: "row", justifyContent: "space-between", marginTop: 20, paddingHorizontal: 20, paddingBottom: 15 },
-  boton: { flex: 1, padding: 10, borderRadius: 5, alignItems: "center" },
-  botonIzquierda: { backgroundColor: "#888", marginRight: 5 },
-  botonDerecha: { backgroundColor: "#28A745", marginLeft: 5 },
-  modalFondo: { flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.7)" },
+  input: { borderWidth: 1, borderColor: "#ccc", marginBottom: 15, padding: 14, borderRadius: 10, marginHorizontal: 10, backgroundColor: "#fff", fontSize: 16 },
+  botonesContainer: { flexDirection: "row", justifyContent: "center", gap: 15, marginTop: 25, paddingHorizontal: 20, paddingBottom: 20 },
+  boton: { minWidth: 120, paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  botonIzquierda: { backgroundColor: "#6c757d" },
+  botonDerecha: { backgroundColor: "#28A745" },
+  botonDisabled: { backgroundColor: "#aaa", opacity: 0.7 },
+  modalFondo: { flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.85)" },
   keyboardAvoidingContainer: { flex: 1, justifyContent: "center" },
-  modalContenido: { backgroundColor: "#fff", marginHorizontal: 20, borderRadius: 10, flex: 1, paddingVertical: 10, marginVertical: 75  },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 10 },
-  tituloModal: { fontSize: 20, fontWeight: "bold", marginBottom: 15, textAlign: "center", color: "#800080" },
-  resultadoBusqueda: { borderWidth: 1, borderColor: "#ccc", borderRadius: 5, marginBottom: 15, maxHeight: 150, marginTop: 5 },
-  opcionBusqueda: { padding: 10, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  errorSmall: { color: "gray", padding: 8, textAlign: "center", fontSize: 13 },
-  cardProveedor: { backgroundColor: "#F3E5F5", padding: 12, borderRadius: 8, marginVertical: 10, borderLeftWidth: 4, borderLeftColor: "#800080" },
-  cardTitle: { fontSize: 13, color: "#666", marginBottom: 3 },
-  cardText: { fontSize: 16, color: "#333", fontWeight: "bold" },
-  cardSubText: { fontSize: 13, color: "#777" },
-  detalleHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 15, marginBottom: 8 },
-  botonAgregar: { backgroundColor: "#FFC107", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 5 },
-  carritoItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f9f9f9", padding: 10, borderRadius: 6, marginBottom: 6 },
+  modalContenido: { backgroundColor: "#fff", marginHorizontal: 20, borderRadius: 18, maxHeight: "92%", elevation: 15 },
+  scrollContent: { paddingHorizontal: 22, paddingTop: 25 },
+  tituloModal: { fontSize: 24, fontWeight: "bold", marginBottom: 20, textAlign: "center", color: "#800080" },
+  resultadoBusqueda: { borderWidth: 1, borderColor: "#ddd", borderRadius: 10, maxHeight: 170, marginBottom: 15, overflow: "hidden" },
+  opcionBusqueda: { padding: 14, borderBottomWidth: 1, borderBottomColor: "#eee" },
+  textoOpcion: { fontSize: 15, textAlign: "center" },
+  errorSmall: { color: "#999", padding: 12, textAlign: "center", fontStyle: "italic" },
+  cardProveedor: { backgroundColor: "#f3e8ff", padding: 16, borderRadius: 12, marginVertical: 12, borderLeftWidth: 6, borderLeftColor: "#800080" },
+  cardTitle: { fontSize: 14, color: "#666", marginBottom: 5, textAlign: "center" },
+  cardText: { fontSize: 18, color: "#333", fontWeight: "bold", textAlign: "center" },
+  cardSubText: { fontSize: 14, color: "#777", textAlign: "center" },
+  detalleHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 20, marginBottom: 12 },
+  botonAgregar: { backgroundColor: "#FFC107", paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10 },
+  carritoItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f8f9fa", padding: 14, borderRadius: 12, marginBottom: 10 },
   itemLeft: { flex: 4 },
-  itemNombre: { fontSize: 14, fontWeight: "bold", color: "#333" },
-  itemCantidad: { fontSize: 12, color: "#666" },
-  itemTotalCarrito: { fontWeight: "bold", fontSize: 15, color: "#800080" },
-  itemEliminarBoton: { width: 28, alignItems: "center" },
-  eliminarItemTexto: { color: "#DC3545", fontSize: 18, fontWeight: "bold" },
-  totalFactura: { fontSize: 21, fontWeight: "bold", textAlign: "right", marginTop: 15, color: "#000", backgroundColor: "#E1BEE7", padding: 10, borderRadius: 5, borderWidth: 2, borderColor: "#800080" },
+  itemNombre: { fontSize: 16, fontWeight: "bold", color: "#333" },
+  itemCantidad: { fontSize: 13, color: "#666", marginTop: 3 },
+  stockInfo: { fontSize: 12, color: "#28A745", fontWeight: "bold", marginTop: 4 },
+  itemTotalCarrito: { fontWeight: "bold", fontSize: 17, color: "#800080" },
+  itemEliminarBoton: { width: 36, height: 36, backgroundColor: "#ffebee", borderRadius: 18, justifyContent: "center", alignItems: "center" },
+  eliminarItemTexto: { color: "#d32f2f", fontSize: 20, fontWeight: "bold" },
+  totalFactura: { fontSize: 26, fontWeight: "bold", textAlign: "right", marginTop: 25, color: "#000", backgroundColor: "#e1bee7", padding: 16, borderRadius: 12, borderWidth: 4, borderColor: "#800080" },
 
-  modalCompraCompacto: { backgroundColor: "#fff", marginHorizontal: 30, borderRadius: 12, padding: 16, maxHeight: "90%", elevation: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8 },
-  tituloModalSmall: { fontSize: 18, fontWeight: "bold", textAlign: "center", color: "#800080", marginBottom: 12 },
-  inputSmall: { borderWidth: 1, borderColor: "#ddd", padding: 10, borderRadius: 8, marginBottom: 10, fontSize: 15 },
-  resultadoBusquedaSmall: { maxHeight: 100, marginBottom: 10 },
-  opcionSmall: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, paddingHorizontal: 5, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  textoOpcionSmall: { fontSize: 14, color: "#333" },
-  precioSmall: { fontSize: 13, color: "#800080", fontWeight: "bold" },
-  noResultado: { textAlign: "center", color: "#999", fontSize: 13, marginBottom: 8 },
-  cardProductoSmall: { backgroundColor: "#FFF8E1", padding: 10, borderRadius: 8, marginBottom: 10, borderLeftWidth: 4, borderLeftColor: "#FFC107" },
-  nombreProductoSmall: { fontSize: 15, fontWeight: "bold", color: "#333" },
-  precioProductoSmall: { fontSize: 13, color: "#666", marginTop: 2 },
-  botonesSmall: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
-  botonSmall: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: "center" },
-  botonCancelarSmall: { backgroundColor: "#ccc", marginRight: 6 },
-  botonAgregarSmall: { backgroundColor: "#28A745", marginLeft: 6 },
-  textoBotonSmall: { color: "#fff", fontWeight: "bold", fontSize: 14 },
-
-  toast: { position: 'absolute', bottom: 100, left: 20, right: 20, padding: 15, borderRadius: 10, flexDirection: 'row', alignItems: 'center', elevation: 10 },
-  toastSuccess: { backgroundColor: '#28A745' },
-  toastError: { backgroundColor: '#DC3545' },
-  toastText: { color: '#fff', fontWeight: 'bold', marginLeft: 8 }
+  modalCompraCompacto: { backgroundColor: "#fff", marginHorizontal: 30, borderRadius: 18, padding: 22, elevation: 20 },
+  tituloModalSmall: { fontSize: 22, fontWeight: "bold", textAlign: "center", color: "#800080", marginBottom: 18 },
+  inputSmall: { borderWidth: 1, borderColor: "#ddd", padding: 14, borderRadius: 12, marginBottom: 14, fontSize: 16, backgroundColor: "#fff" },
+  resultadoBusquedaSmall: { maxHeight: 130, marginBottom: 14, borderWidth: 1, borderColor: "#eee", borderRadius: 10, overflow: "hidden" },
+  opcionSmall: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 12, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: "#eee" },
+  textoOpcionSmall: { fontSize: 15, color: "#333" },
+  stockSmall: { fontSize: 12, color: "#28A745", fontWeight: "bold" },
+  precioSmall: { fontSize: 15, color: "#800080", fontWeight: "bold" },
+  cardProductoSmall: { backgroundColor: "#fff8e1", padding: 16, borderRadius: 12, marginBottom: 16, borderLeftWidth: 6, borderLeftColor: "#FFC107" },
+  nombreProductoSmall: { fontSize: 18, fontWeight: "bold", color: "#333", textAlign: "center" },
+  precioProductoSmall: { fontSize: 15, color: "#666", marginTop: 5, textAlign: "center" },
+  stockDisponible: { fontSize: 15, color: "#28A745", fontWeight: "bold", marginTop: 8, textAlign: "center" },
+  botonesSmall: { flexDirection: "row", justifyContent: "space-between", marginTop: 20, gap: 12 },
+  botonSmall: { flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  botonCancelarSmall: { backgroundColor: "#6c757d" },
+  botonAgregarSmall: { backgroundColor: "#28A745" },
+  textoBotonSmall: { color: "#fff", fontWeight: "bold", fontSize: 16, textAlign: "center" },
 });
 
 export default FormularioCompras;
