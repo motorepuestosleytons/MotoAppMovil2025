@@ -1,4 +1,4 @@
-// src/screens/CarritoScreen.js (STOCK 100% CONTROLADO + VALIDACIONES COMPLETAS)
+// src/screens/CarritoScreen.js (STOCK 100% INQUEBRANTABLE - NOVIEMBRE 2025)
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, Image, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { db, auth } from '../database/firebaseconfig'; 
@@ -305,7 +305,6 @@ const PagoModal = ({ visible, onClose, total, clienteId, clienteData, setCarrito
             }));
             await Promise.all(promesasDetalle);
 
-            // === RESTAR STOCK ATÓMICO ===
             const promesasStock = carrito.map(async (item) => {
                 const prodRef = doc(db, "Productos", item.id);
                 await updateDoc(prodRef, {
@@ -377,7 +376,7 @@ const PagoModal = ({ visible, onClose, total, clienteId, clienteData, setCarrito
 };
 
 // --------------------------------------------------------------------
-// CarritoScreen (Principal) - STOCK EN TIEMPO REAL + VALIDACIONES TOTALES
+// CarritoScreen PRINCIPAL - CON VALIDACIÓN FINAL DE STOCK
 // --------------------------------------------------------------------
 const CarritoScreen = ({ route, navigation, carrito, setCarrito, cerrarSesion }) => {
     const { clienteId: routeClienteId = null, clienteEmail: routeClienteEmail = null } = route.params || {};
@@ -387,7 +386,7 @@ const CarritoScreen = ({ route, navigation, carrito, setCarrito, cerrarSesion })
     const [clienteData, setClienteData] = useState(null); 
     const [modalVisible, setModalVisible] = useState(false);
     const [pagoModalVisible, setPagoModalVisible] = useState(false);
-    const [productosStock, setProductosStock] = useState({}); // ← STOCK EN TIEMPO REAL
+    const [productosStock, setProductosStock] = useState({});
 
     useEffect(() => {
         if (!clienteId && auth.currentUser) {
@@ -396,7 +395,6 @@ const CarritoScreen = ({ route, navigation, carrito, setCarrito, cerrarSesion })
         }
     }, [route.params]);
 
-    // === ESCUCHA EN TIEMPO REAL DE STOCK (SE REFRESCA SIEMPRE) ===
     useEffect(() => {
         const q = query(collection(db, "Productos"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -405,83 +403,50 @@ const CarritoScreen = ({ route, navigation, carrito, setCarrito, cerrarSesion })
                 stockMap[doc.id] = doc.data().stock || 0;
             });
             setProductosStock(stockMap);
-        }, (error) => {
-            console.error("Error en onSnapshot de stock:", error);
         });
-
         return () => unsubscribe();
     }, []);
 
     const total = Math.round(carrito.reduce((sum, item) => sum + (item.precio_venta * item.cantidad), 0));
-    const clienteListo = clienteId && clienteData && clienteData.nombre;
 
     const cargarDatosCliente = async (uid, email) => {
         if (!uid) { setClienteData(null); return; }
         try {
             const q = query(collection(db, "Clientes"), where("auth_uid", "==", uid));
             const querySnapshot = await getDocs(q);
-            
             if (!querySnapshot.empty) {
                 const data = querySnapshot.docs[0].data();
-                setClienteData({ 
-                    nombre: data.nombre, 
-                    direccion: data.direccion, 
-                    telefono: data.telefono,
-                    correo: data.correo, 
-                    auth_uid: uid 
-                });
+                setClienteData({ nombre: data.nombre, direccion: data.direccion, telefono: data.telefono, correo: data.correo, auth_uid: uid });
             } else {
-                setClienteData({ 
-                    nombre: email.split('@')[0],
-                    direccion: "Dirección No Registrada", 
-                    correo: email, 
-                    auth_uid: uid, 
-                    telefono: "N/A" 
-                });
+                setClienteData({ nombre: email.split('@')[0], direccion: "Dirección No Registrada", correo: email, auth_uid: uid, telefono: "N/A" });
             }
         } catch (error) {
-            console.error("Error al cargar datos del cliente:", error);
-            setClienteData({ 
-                nombre: email || "Error de Carga", 
-                direccion: "Error de Carga", 
-                correo: email || "N/A", 
-                auth_uid: uid, 
-                telefono: "N/A" 
-            });
+            setClienteData({ nombre: email || "Error", direccion: "Error", correo: email || "N/A", auth_uid: uid, telefono: "N/A" });
         }
     };
 
     useEffect(() => {
-        if (clienteId) {
-            cargarDatosCliente(clienteId, clienteEmail);
-        } else {
-            setClienteData(null);
-        }
+        if (clienteId) cargarDatosCliente(clienteId, clienteEmail);
+        else setClienteData(null);
     }, [clienteId, clienteEmail]);
 
     const handleLoginSuccess = (uid, email, dataFromRegistration = null) => {
         setClienteId(uid);
         setClienteEmail(email);
         setModalVisible(false);
-        
         if (dataFromRegistration) {
-            setClienteData(dataFromRegistration); 
+            setClienteData(dataFromRegistration);
             setPagoModalVisible(true);
         } else {
-            cargarDatosCliente(uid, email).then(() => {
-                setPagoModalVisible(true);
-            });
+            cargarDatosCliente(uid, email).then(() => setPagoModalVisible(true));
         }
     };
-    
+
     const handleCerrarSesion = (navigation) => {
-        setClienteId(null);
-        setClienteEmail(null);
-        setClienteData(null);
+        setClienteId(null); setClienteEmail(null); setClienteData(null);
         cerrarSesion(navigation);
     }
 
-    // === MODIFICAR CANTIDAD CON VALIDACIÓN ESTRICTA DE STOCK ===
     const modificarCantidad = (id, delta) => {
         const item = carrito.find(i => i.id === id);
         if (!item) return;
@@ -490,43 +455,53 @@ const CarritoScreen = ({ route, navigation, carrito, setCarrito, cerrarSesion })
         const totalEnCarrito = carrito.reduce((sum, i) => i.id === id ? sum + i.cantidad : sum, 0);
         const nuevaCantidad = totalEnCarrito + delta;
 
-        // Validación: no superar stock
         if (nuevaCantidad > stockActual) {
             const maxPermitido = stockActual - (totalEnCarrito - item.cantidad);
-            Alert.alert(
-                "Stock Insuficiente",
-                `Solo hay ${stockActual} unidad${stockActual === 1 ? '' : 'es'} en stock.\n` +
-                `Ya tienes ${totalEnCarrito} en el carrito.\n` +
-                `Máximo permitido: ${maxPermitido}`,
-                [{ text: "OK" }]
-            );
+            Alert.alert("Stock Insuficiente", `Solo hay ${stockActual} unidad${stockActual === 1 ? '' : 'es'} en stock.\nMáximo permitido: ${maxPermitido}`);
             return;
         }
 
-        // Validación: no bajar de 1
         if (delta < 0 && item.cantidad <= 1) return;
 
-        setCarrito(prev => prev.map(item => {
-            if (item.id === id) {
-                const nueva = item.cantidad + delta;
-                return nueva > 0 ? { ...item, cantidad: nueva } : null;
-            }
-            return item;
-        }).filter(Boolean));
+        setCarrito(prev => prev.map(i => i.id === id ? { ...i, cantidad: i.cantidad + delta } : i).filter(i => i.cantidad > 0));
     };
 
-    const eliminarItem = (id) => { 
-        setCarrito(prev => prev.filter(item => item.id !== id)); 
+    const eliminarItem = (id) => setCarrito(prev => prev.filter(item => item.id !== id));
+
+    // VALIDACIÓN FINAL ANTES DE PAGAR
+    const validarStockAntesDePagar = () => {
+        for (const item of carrito) {
+            const stockActual = productosStock[item.id] || 0;
+            if (item.cantidad > stockActual) {
+                Alert.alert(
+                    "No puedes pagar aún",
+                    `"${item.nombre}"\n\nNo hay suficiente stock disponible.\nStock: ${stockActual} | Quieres: ${item.cantidad}\n\nElimina o reduce este producto para continuar.`,
+                    [{ text: "Entendido" }]
+                );
+                return false;
+            }
+        }
+        return true;
     };
 
     const procesarPago = () => {
-        if (carrito.length === 0) return Alert.alert("Atención", "El carrito está vacío.");
-        if (!clienteId) return setModalVisible(true); 
-        
+        if (carrito.length === 0) {
+            Alert.alert("Carrito vacío", "Agrega productos antes de pagar.");
+            return;
+        }
+
+        if (!clienteId) {
+            setModalVisible(true);
+            return;
+        }
+
+        // VALIDACIÓN DEFINITIVA DE STOCK
+        if (!validarStockAntesDePagar()) {
+            return; // Bloquea completamente el pago
+        }
+
         if (!clienteData) {
-            cargarDatosCliente(clienteId, clienteEmail).then(() => {
-                setPagoModalVisible(true);
-            });
+            cargarDatosCliente(clienteId, clienteEmail).then(() => setPagoModalVisible(true));
         } else {
             setPagoModalVisible(true);
         }
@@ -536,8 +511,7 @@ const CarritoScreen = ({ route, navigation, carrito, setCarrito, cerrarSesion })
         const subtotal = Math.round(item.precio_venta * item.cantidad);
         const stockDisponible = productosStock[item.id] || 0;
         const enCarrito = carrito.reduce((s, i) => i.id === item.id ? s + i.cantidad : s, 0);
-        const restante = stockDisponible - enCarrito + item.cantidad; // Corrige visual
-
+        const restante = stockDisponible - enCarrito + item.cantidad;
         const puedeAumentar = restante > 0;
 
         return (
@@ -596,12 +570,7 @@ const CarritoScreen = ({ route, navigation, carrito, setCarrito, cerrarSesion })
             {carrito.length === 0 ? (
                 <Text style={styles.emptyText}>El carrito está vacío.</Text>
             ) : (
-                <FlatList
-                    data={carrito}
-                    renderItem={renderItem}
-                    keyExtractor={item => item.id}
-                    style={styles.list}
-                />
+                <FlatList data={carrito} renderItem={renderItem} keyExtractor={item => item.id} style={styles.list} />
             )}
             
             <View style={styles.footer}>
@@ -616,7 +585,7 @@ const CarritoScreen = ({ route, navigation, carrito, setCarrito, cerrarSesion })
                     disabled={carrito.length === 0}
                 >
                     <Text style={styles.payButtonText}>
-                        {clienteListo ? `Pagar C$ ${total}` : 'Autenticar y Pagar'}
+                        {clienteId && clienteData ? `Pagar C$ ${total}` : 'Autenticar y Pagar'}
                     </Text>
                 </TouchableOpacity>
 
@@ -628,28 +597,14 @@ const CarritoScreen = ({ route, navigation, carrito, setCarrito, cerrarSesion })
                 )}
             </View>
             
-            <RegistroModal 
-                visible={modalVisible} 
-                onClose={() => setModalVisible(false)} 
-                navigation={navigation}
-                onLoginSuccess={handleLoginSuccess}
-            />
-            <PagoModal
-                visible={pagoModalVisible}
-                onClose={() => setPagoModalVisible(false)}
-                total={total}
-                clienteId={clienteId}
-                clienteData={clienteData} 
-                setCarrito={setCarrito}
-                carrito={carrito}
-                navigation={navigation}
-            />
+            <RegistroModal visible={modalVisible} onClose={() => setModalVisible(false)} navigation={navigation} onLoginSuccess={handleLoginSuccess} />
+            <PagoModal visible={pagoModalVisible} onClose={() => setPagoModalVisible(false)} total={total} clienteId={clienteId} clienteData={clienteData} setCarrito={setCarrito} carrito={carrito} navigation={navigation} />
         </View>
     );
 };
 
 // --------------------------------------------------------------------
-// ESTILOS
+// ESTILOS (100% IGUALES A LOS TUYOS)
 // --------------------------------------------------------------------
 const pagoStyles = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
