@@ -1,21 +1,13 @@
+// src/views/Productos.js
 import React, { useEffect, useState } from "react";
 import { View, StyleSheet, Alert } from "react-native";
 import { db } from "../database/firebaseconfig.js";
-import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import FormularioProductos from "../Components/FormularioProductos.js";
 import TablaProductos from "../Components/TablaProductos.js";
 
-const Productos = ({ navigation, cerrarSesion }) => {
+const Productos = ({ navigation }) => {
   const [productos, setProductos] = useState([]);
-  const [nuevoProducto, setNuevoProducto] = useState({
-    nombre: "",
-    marca: "",
-    modelo: "",
-    precio_compra: "",
-    precio_venta: "",
-    stock: "",
-    foto: "",
-  });
 
   const cargarDatos = async () => {
     try {
@@ -23,7 +15,7 @@ const Productos = ({ navigation, cerrarSesion }) => {
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setProductos(data);
     } catch (error) {
-      console.error(error);
+      console.error("Error cargando datos:", error);
     }
   };
 
@@ -31,44 +23,33 @@ const Productos = ({ navigation, cerrarSesion }) => {
     try {
       await deleteDoc(doc(db, "Productos", id));
       cargarDatos();
-      Alert.alert("Éxito", "Producto eliminado correctamente.");
+      Alert.alert("Éxito", "Producto eliminado.");
     } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "No se pudo eliminar el producto.");
+      Alert.alert("Error", "No se pudo eliminar.");
     }
   };
 
-  const editarProducto = async (productoActualizado) => {
-    const { id, nombre, marca, modelo, precio_compra, precio_venta, stock, foto } = productoActualizado;
-    if (!id) return;
+  const editarProducto = async (producto) => {
+    const { id, ...datos } = producto;
     try {
       await updateDoc(doc(db, "Productos", id), {
-        nombre, marca, modelo,
-        precio_compra: parseFloat(precio_compra) || 0,
-        precio_venta: parseFloat(precio_venta) || 0,
-        stock: parseInt(stock) || 0,
-        foto: foto || ""
+        ...datos,
+        precio_compra: parseFloat(datos.precio_compra) || 0,
+        precio_venta: parseFloat(datos.precio_venta) || 0,
+        stock: parseInt(datos.stock) || 0,
       });
       cargarDatos();
-      Alert.alert("Éxito", "Producto actualizado correctamente.");
+      Alert.alert("Éxito", "Producto actualizado.");
     } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "No se pudo actualizar el producto.");
+      Alert.alert("Error", "No se pudo actualizar.");
     }
   };
 
   useEffect(() => { cargarDatos(); }, []);
 
-  const navegarACatalogo = () => {
-    navigation.navigate("Catalogo");
-  };
-
   return (
     <View style={styles.container}>
-      <FormularioProductos 
-        cargarDatos={cargarDatos} 
-        onVerCatalogo={navegarACatalogo} 
-      />
+      <FormularioProductos cargarDatos={cargarDatos} />
       <TablaProductos
         productos={productos}
         eliminarProducto={eliminarProducto}
@@ -78,5 +59,8 @@ const Productos = ({ navigation, cerrarSesion }) => {
   );
 };
 
-const styles = StyleSheet.create({ container: { flex: 1, padding: 10 } });
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#f5f5f5", padding: 10 },
+});
+
 export default Productos;

@@ -1,6 +1,5 @@
-// TablaProveedores.js (Estilos Completos y Modernos)
-
-import React, { useState } from "react";
+// TablaProveedores.js (CON BÚSQUEDA QUE FILTRA FILAS)
+import React, { useState, useEffect } from "react"; // ← AÑADÍ useEffect
 import {
     View,
     Text,
@@ -10,7 +9,7 @@ import {
     Modal,
     TextInput,
 } from "react-native";
-import BotonEliminarProveedor from "./BotonEliminarProveedor.js"; // Asumimos que existe y se adapta
+import BotonEliminarProveedor from "./BotonEliminarProveedor.js";
 import { Ionicons } from "@expo/vector-icons"; 
 
 // Colores de la paleta moderna
@@ -22,16 +21,31 @@ const TablaProveedores = ({ proveedores, eliminarProveedor, editarProveedor }) =
     // Estados para el Modal de Edición
     const [visible, setVisible] = useState(false);
     const [proveedorSeleccionado, setProveedorSeleccionado] = useState(null);
-    // Campos Adaptados
     const [datosEditados, setDatosEditados] = useState({
         empresa: "",
         nombre_proveedor: "",
         telefono: "",
     });
 
+    // === BÚSQUEDA EN VIVO (LOCAL) ===
+    const [busqueda, setBusqueda] = useState("");
+    const [proveedoresFiltrados, setProveedoresFiltrados] = useState(proveedores);
+
+    useEffect(() => {
+        if (!busqueda.trim()) {
+            setProveedoresFiltrados(proveedores);
+            return;
+        }
+        const filtrados = proveedores.filter(p =>
+            p.empresa?.toLowerCase().includes(busqueda.toLowerCase()) ||
+            p.nombre_proveedor?.toLowerCase().includes(busqueda.toLowerCase()) ||
+            p.telefono?.includes(busqueda)
+        );
+        setProveedoresFiltrados(filtrados);
+    }, [busqueda, proveedores]);
+
     const abrirModal = (proveedor) => {
         setProveedorSeleccionado(proveedor);
-        // Inicialización de campos adaptada
         setDatosEditados({
             empresa: proveedor.empresa || "",
             nombre_proveedor: proveedor.nombre_proveedor || "",
@@ -41,7 +55,6 @@ const TablaProveedores = ({ proveedores, eliminarProveedor, editarProveedor }) =
     };
 
     const guardarCambios = () => {
-        // Se llama a la función de prop para guardar en Firestore
         if (proveedorSeleccionado) {
             editarProveedor({ ...proveedorSeleccionado, ...datosEditados });
         }
@@ -52,10 +65,21 @@ const TablaProveedores = ({ proveedores, eliminarProveedor, editarProveedor }) =
         <View style={styles.container}>
             <Text style={styles.titulo}>Lista de Proveedores</Text> 
 
+            {/* === BARRA DE BÚSQUEDA (NUEVA) === */}
+            <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+                <TextInput
+                    style={styles.inputSearch}
+                    placeholder="Buscar por empresa"
+                    value={busqueda}
+                    onChangeText={setBusqueda}
+                />
+            </View>
+
             {/* Contenedor principal de la tabla con ScrollView horizontal */}
             <ScrollView horizontal style={styles.tablaWrapper}>
                 <View style={{ minWidth: 550 }}>
-                    {/* Encabezado de la tabla - Títulos adaptados */}
+                    {/* Encabezado de la tabla */}
                     <View style={[styles.fila, styles.encabezado]}>
                         <Text style={[styles.textoEncabezado, styles.columnaEmpresa]}>
                             Empresa
@@ -73,40 +97,45 @@ const TablaProveedores = ({ proveedores, eliminarProveedor, editarProveedor }) =
 
                     {/* Contenido de la tabla con ScrollView vertical */}
                     <ScrollView style={styles.contenidoScroll}>
-                        {proveedores.map((item, index) => (
-                            <View
-                                key={item.id}
-                                style={[
-                                    styles.fila,
-                                    index % 2 === 0 ? styles.filaPar : styles.filaImpar,
-                                ]}
-                            >
-                                {/* Celdas de datos adaptadas */}
-                                <Text style={[styles.celda, styles.columnaEmpresa]}>
-                                    {item.empresa}
-                                </Text>
-                                <Text style={[styles.celda, styles.columnaNombreProveedor]}>
-                                    {item.nombre_proveedor}
-                                </Text>
-                                <Text style={[styles.celda, styles.columnaTelefono]}>
-                                    {item.telefono}
-                                </Text>
-                                <View style={[styles.celda, styles.columnaAcciones]}>
-                                    <View style={styles.contenedorBotones}>
-                                        <TouchableOpacity
-                                            style={styles.botonEditar}
-                                            onPress={() => abrirModal(item)}
-                                        >
-                                            <Ionicons name="create-outline" size={16} color="#FFF" />
-                                        </TouchableOpacity>
-                                        <BotonEliminarProveedor 
-                                            id={item.id}
-                                            eliminarProveedor={eliminarProveedor}
-                                        />
+                        {proveedoresFiltrados.length === 0 ? (
+                            <Text style={styles.mensajeVacio}>
+                                {busqueda.trim() ? "No se encontraron proveedores" : "No hay proveedores registrados."}
+                            </Text>
+                        ) : (
+                            proveedoresFiltrados.map((item, index) => (
+                                <View
+                                    key={item.id}
+                                    style={[
+                                        styles.fila,
+                                        index % 2 === 0 ? styles.filaPar : styles.filaImpar,
+                                    ]}
+                                >
+                                    <Text style={[styles.celda, styles.columnaEmpresa]}>
+                                        {item.empresa}
+                                    </Text>
+                                    <Text style={[styles.celda, styles.columnaNombreProveedor]}>
+                                        {item.nombre_proveedor}
+                                    </Text>
+                                    <Text style={[styles.celda, styles.columnaTelefono]}>
+                                        {item.telefono}
+                                    </Text>
+                                    <View style={[styles.celda, styles.columnaAcciones]}>
+                                        <View style={styles.contenedorBotones}>
+                                            <TouchableOpacity
+                                                style={styles.botonEditar}
+                                                onPress={() => abrirModal(item)}
+                                            >
+                                                <Ionicons name="create-outline" size={16} color="#FFF" />
+                                            </TouchableOpacity>
+                                            <BotonEliminarProveedor 
+                                                id={item.id}
+                                                eliminarProveedor={eliminarProveedor}
+                                            />
+                                        </View>
                                     </View>
                                 </View>
-                            </View>
-                        ))}
+                            ))
+                        )}
                     </ScrollView>
                 </View>
             </ScrollView>
@@ -125,7 +154,6 @@ const TablaProveedores = ({ proveedores, eliminarProveedor, editarProveedor }) =
                         </Text>
 
                         <ScrollView style={{ width: "100%" }}>
-                            {/* Input Adaptado: Empresa */}
                             <TextInput
                                 style={styles.input}
                                 placeholder="Empresa"
@@ -135,7 +163,6 @@ const TablaProveedores = ({ proveedores, eliminarProveedor, editarProveedor }) =
                                     setDatosEditados({ ...datosEditados, empresa: valor })
                                 }
                             />
-                            {/* Input Adaptado: Nombre Proveedor */}
                             <TextInput
                                 style={styles.input}
                                 placeholder="Nombre Proveedor"
@@ -145,7 +172,6 @@ const TablaProveedores = ({ proveedores, eliminarProveedor, editarProveedor }) =
                                     setDatosEditados({ ...datosEditados, nombre_proveedor: valor })
                                 }
                             />
-                            {/* Input Sin Cambios: Teléfono */}
                             <TextInput
                                 style={styles.input}
                                 placeholder="Teléfono"
@@ -180,10 +206,25 @@ const TablaProveedores = ({ proveedores, eliminarProveedor, editarProveedor }) =
     );
 };
 
-// Se mantienen los estilos proporcionados
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 10, alignSelf: "stretch", backgroundColor: "#F7F8FA", marginTop: -25 },
+    container: { flex: 1, padding: 10, alignSelf: "stretch", backgroundColor: "#F7F8FA", marginTop: -15 },
     titulo: { fontSize: 24, fontWeight: "700", marginBottom: 15, color: "#333", textAlign: "center" },
+
+    // === NUEVA BÚSQUEDA ===
+    searchContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "#ddd",
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        marginBottom: 15,
+        backgroundColor: "#fff",
+        elevation: 2,
+    },
+    searchIcon: { marginRight: 8 },
+    inputSearch: { flex: 1, paddingVertical: 10, fontSize: 16 },
+
     tablaWrapper: { backgroundColor: "#fff", borderRadius: 10, overflow: "hidden", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
     contenidoScroll: { maxHeight: 400 },
     fila: { flexDirection: "row", alignItems: "center", minHeight: 45, borderBottomWidth: 1, borderBottomColor: '#eee' },
@@ -198,6 +239,7 @@ const styles = StyleSheet.create({
     columnaAcciones: { width: 120 },
     contenedorBotones: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", width: "100%" },
     botonEditar: { backgroundColor: COLOR_ACCION, padding: 7, borderRadius: 5, justifyContent: 'center', alignItems: 'center' },
+    mensajeVacio: { padding: 20, textAlign: 'center', color: '#6c757d', fontStyle: 'italic' },
     overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center" },
     modal: { backgroundColor: "white", padding: 25, borderRadius: 15, width: "90%", shadowColor: "#000", shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 10 },
     textoModal: { fontSize: 22, fontWeight: "600", marginBottom: 20, textAlign: "center", color: "#333" },

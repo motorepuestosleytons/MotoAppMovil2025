@@ -12,7 +12,7 @@ import {
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../database/firebaseconfig';
 
-// IMPORTS CORREGIDOS: minúsculas + sin duplicados
+// IMPORTS CORREGIDOS: rutas correctas + minúsculas
 import GraficoProductos from '../Components/estadisticas/GraficoProductos';
 import GraficoVentasHoy from '../Components/estadisticas/GraficoVentasHoy';
 import GraficoTopClientes from '../Components/estadisticas/GraficoTopClientes';
@@ -26,10 +26,11 @@ const EstadisticasModal = ({ visible, onClose }) => {
     if (!visible) return;
 
     setLoading(true);
+
     const unsubscribe = onSnapshot(
       collection(db, 'Productos'),
-      (snap) => {
-        const data = snap.docs.map((doc) => ({
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
         }));
@@ -45,21 +46,24 @@ const EstadisticasModal = ({ visible, onClose }) => {
     return () => unsubscribe();
   }, [visible]);
 
-  const nombres = productos.map((p) => p.nombre || 'Sin nombre');
-  const precios = productos.map((p) => parseFloat(p.precio_venta) || 0);
+  // Preparar datos para el gráfico de productos
+  const nombres = productos.map(p => p.nombre || 'Sin nombre');
+  const precios = productos.map(p => parseFloat(p.precio_venta) || 0);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+    <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
         <View style={styles.modal}>
           <ScrollView contentContainerStyle={styles.scroll}>
             <Text style={styles.title}>Estadísticas</Text>
 
             {loading ? (
-              <ActivityIndicator size="large" color="#007bff" style={{ margin: 50 }} />
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#007bff" />
+                <Text style={styles.loadingText}>Cargando datos...</Text>
+              </View>
             ) : (
               <>
-                {/* 4 GRÁFICOS MEJORADOS */}
                 <GraficoProductos nombres={nombres} precios={precios} />
                 <GraficoVentasHoy />
                 <GraficoTopClientes />
@@ -106,6 +110,15 @@ const styles = StyleSheet.create({
     color: '#2c3e50',
     marginBottom: 20,
     letterSpacing: 0.5,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#666',
   },
   closeButton: {
     backgroundColor: '#e74c3c',

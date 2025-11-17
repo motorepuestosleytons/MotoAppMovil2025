@@ -1,6 +1,5 @@
-// TablaClientes.js (Estilos Completos y Modernos - CORREGIDO: Cédula -> Dirección)
-
-import React, { useState } from "react";
+// TablaClientes.js (BÚSQUEDA EN VIVO DENTRO DE LA TABLA)
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -10,36 +9,53 @@ import {
     Modal,
     TextInput,
 } from "react-native";
-import BotonEliminarCliente from "./BotonEliminarCliente.js"; // Asumo que este componente existe
-import { Ionicons } from "@expo/vector-icons"; // Para iconos de edición
+import BotonEliminarCliente from "./BotonEliminarCliente.js";
+import { Ionicons } from "@expo/vector-icons";
 
-// Colores de la paleta moderna
-const COLOR_PRIMARIO = "#1E90FF"; // Azul Brillante (para Encabezado de Tabla y Botón Guardar)
-const COLOR_ACCION = "#00A878";   // Verde Menta Oscuro (para Botón Editar en fila)
-const COLOR_CANCELAR = "#6c757d"; // Gris Oscuro
+const COLOR_PRIMARIO = "#1E90FF";
+const COLOR_ACCION = "#00A878";
+const COLOR_CANCELAR = "#6c757d";
 
 const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
-    // Estados para el Modal de Edición
     const [visible, setVisible] = useState(false);
     const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
     const [datosEditados, setDatosEditados] = useState({
-        nombre: "",
-        direccion: "", // 🚨 CAMBIO: cedula -> direccion
-        telefono: "",
+        nombre: "", direccion: "", telefono: "",
     });
+    const [busqueda, setBusqueda] = useState("");
+    const [clientesFiltrados, setClientesFiltrados] = useState(clientes);
+
+    // === FILTRADO EN VIVO ===
+    useEffect(() => {
+        if (!busqueda.trim()) {
+            setClientesFiltrados(clientes);
+            return;
+        }
+
+        const filtrados = clientes.filter(c =>
+            c.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+            c.direccion?.toLowerCase().includes(busqueda.toLowerCase()) ||
+            c.telefono?.includes(busqueda)
+        );
+        setClientesFiltrados(filtrados);
+    }, [busqueda, clientes]);
+
+    // === RECARGAR CUANDO SE ELIMINA O EDITA ===
+    useEffect(() => {
+        setClientesFiltrados(clientes);
+    }, [clientes]);
 
     const abrirModal = (cliente) => {
         setClienteSeleccionado(cliente);
         setDatosEditados({
             nombre: cliente.nombre || "",
-            direccion: cliente.direccion || "", // 🚨 CAMBIO: cedula -> direccion
+            direccion: cliente.direccion || "",
             telefono: cliente.telefono || "",
         });
         setVisible(true);
     };
 
     const guardarCambios = () => {
-        // La función editarCliente en Clientes.js manejará el updateDoc con 'direccion'
         if (clienteSeleccionado) {
             editarCliente({ ...clienteSeleccionado, ...datosEditados });
         }
@@ -50,77 +66,70 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
         <View style={styles.container}>
             <Text style={styles.titulo}>Lista de Clientes</Text>
 
-            {/* Contenedor principal de la tabla con ScrollView horizontal */}
+            {/* BARRA DE BÚSQUEDA */}
+            <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+                <TextInput
+                    style={styles.inputSearch}
+                    placeholder="Buscar Clientes"
+                    value={busqueda}
+                    onChangeText={setBusqueda}
+                />
+            </View>
+
+            {/* TABLA CON SCROLL */}
             <ScrollView horizontal style={styles.tablaWrapper}>
-                {/* 🚨 CAMBIO: minWidth ajustado para acomodar la Dirección */}
-                <View style={{ minWidth: 600 }}> 
-                    {/* Encabezado de la tabla */}
+                <View style={{ minWidth: 600 }}>
                     <View style={[styles.fila, styles.encabezado]}>
-                        <Text style={[styles.textoEncabezado, styles.columnaNombre]}>
-                            Nombre
-                        </Text>
-                        <Text style={[styles.textoEncabezado, styles.columnaDireccion]}>
-                            Dirección {/* 🚨 CAMBIO: Cédula -> Dirección */}
-                        </Text>
-                        <Text style={[styles.textoEncabezado, styles.columnaTelefono]}>
-                            Teléfono
-                        </Text>
-                        <Text style={[styles.textoEncabezado, styles.columnaAcciones]}>
-                            Acciones
-                        </Text>
+                        <Text style={[styles.textoEncabezado, styles.columnaNombre]}>Nombre</Text>
+                        <Text style={[styles.textoEncabezado, styles.columnaDireccion]}>Dirección</Text>
+                        <Text style={[styles.textoEncabezado, styles.columnaTelefono]}>Teléfono</Text>
+                        <Text style={[styles.textoEncabezado, styles.columnaAcciones]}>Acciones</Text>
                     </View>
 
-                    {/* Contenido de la tabla con ScrollView vertical */}
                     <ScrollView style={styles.contenidoScroll}>
-                        {clientes.map((item, index) => (
-                            <View
-                                key={item.id}
-                                style={[
-                                    styles.fila,
-                                    index % 2 === 0 ? styles.filaPar : styles.filaImpar,
-                                ]}
-                            >
-                                <Text style={[styles.celda, styles.columnaNombre]}>
-                                    {item.nombre}
-                                </Text>
-                                <Text style={[styles.celda, styles.columnaDireccion]}>
-                                    {item.direccion} {/* 🚨 CAMBIO: item.cedula -> item.direccion */}
-                                </Text>
-                                <Text style={[styles.celda, styles.columnaTelefono]}>
-                                    {item.telefono}
-                                </Text>
-                                <View style={[styles.celda, styles.columnaAcciones]}>
-                                    <View style={styles.contenedorBotones}>
-                                        <TouchableOpacity
-                                            style={styles.botonEditar}
-                                            onPress={() => abrirModal(item)}
-                                        >
-                                            <Ionicons name="create-outline" size={16} color="#FFF" />
-                                        </TouchableOpacity>
-                                        <BotonEliminarCliente
-                                            id={item.id}
-                                            eliminarCliente={eliminarCliente}
-                                        />
+                        {clientesFiltrados.length === 0 ? (
+                            <Text style={styles.mensajeVacio}>
+                                {busqueda.trim() ? "No se encontraron resultados" : "No hay clientes registrados"}
+                            </Text>
+                        ) : (
+                            clientesFiltrados.map((item, index) => (
+                                <View
+                                    key={item.id}
+                                    style={[
+                                        styles.fila,
+                                        index % 2 === 0 ? styles.filaPar : styles.filaImpar,
+                                    ]}
+                                >
+                                    <Text style={[styles.celda, styles.columnaNombre]}>{item.nombre}</Text>
+                                    <Text style={[styles.celda, styles.columnaDireccion]}>{item.direccion}</Text>
+                                    <Text style={[styles.celda, styles.columnaTelefono]}>{item.telefono}</Text>
+                                    <View style={[styles.celda, styles.columnaAcciones]}>
+                                        <View style={styles.contenedorBotones}>
+                                            <TouchableOpacity
+                                                style={styles.botonEditar}
+                                                onPress={() => abrirModal(item)}
+                                            >
+                                                <Ionicons name="create-outline" size={16} color="#FFF" />
+                                            </TouchableOpacity>
+                                            <BotonEliminarCliente
+                                                id={item.id}
+                                                eliminarCliente={eliminarCliente}
+                                            />
+                                        </View>
                                     </View>
                                 </View>
-                            </View>
-                        ))}
+                            ))
+                        )}
                     </ScrollView>
                 </View>
             </ScrollView>
 
-            {/* Modal de Edición - Estilos mejorados */}
-            <Modal
-                visible={visible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setVisible(false)}
-            >
+            {/* MODAL DE EDICIÓN */}
+            <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
                 <View style={styles.overlay}>
                     <View style={styles.modal}>
-                        <Text style={styles.textoModal}>
-                            Editar Cliente: {datosEditados.nombre}
-                        </Text>
+                        <Text style={styles.textoModal}>Editar Cliente: {datosEditados.nombre}</Text>
 
                         <ScrollView style={{ width: "100%" }}>
                             <TextInput
@@ -128,27 +137,21 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
                                 placeholder="Nombre"
                                 placeholderTextColor="#999"
                                 value={datosEditados.nombre}
-                                onChangeText={(valor) =>
-                                    setDatosEditados({ ...datosEditados, nombre: valor })
-                                }
+                                onChangeText={(v) => setDatosEditados({ ...datosEditados, nombre: v })}
                             />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Dirección" // 🚨 CAMBIO
+                                placeholder="Dirección"
                                 placeholderTextColor="#999"
-                                value={datosEditados.direccion} // 🚨 CAMBIO
-                                onChangeText={(valor) =>
-                                    setDatosEditados({ ...datosEditados, direccion: valor }) // 🚨 CAMBIO
-                                }
+                                value={datosEditados.direccion}
+                                onChangeText={(v) => setDatosEditados({ ...datosEditados, direccion: v })}
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Teléfono"
                                 placeholderTextColor="#999"
                                 value={datosEditados.telefono}
-                                onChangeText={(valor) =>
-                                    setDatosEditados({ ...datosEditados, telefono: valor })
-                                }
+                                onChangeText={(v) => setDatosEditados({ ...datosEditados, telefono: v })}
                                 keyboardType="phone-pad"
                             />
                         </ScrollView>
@@ -160,7 +163,6 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
                             >
                                 <Text style={styles.textoAccion}>Cancelar</Text>
                             </TouchableOpacity>
-
                             <TouchableOpacity
                                 style={[styles.botonAccion, styles.confirmar]}
                                 onPress={guardarCambios}
@@ -176,13 +178,12 @@ const TablaClientes = ({ clientes, eliminarCliente, editarCliente }) => {
 };
 
 const styles = StyleSheet.create({
-    // Estilos Generales
     container: {
         flex: 1,
         padding: 10,
         alignSelf: "stretch",
-        backgroundColor: "#F7F8FA", // Fondo muy claro,
-        marginTop: -25 
+        backgroundColor: "#F7F8FA",
+        marginTop: -15
     },
     titulo: {
         fontSize: 24,
@@ -191,8 +192,24 @@ const styles = StyleSheet.create({
         color: "#333",
         textAlign: "center",
     },
-    
-    // Estilos de Tabla
+    searchContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "#ddd",
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        marginBottom: 15,
+        backgroundColor: "#fff",
+    },
+    searchIcon: {
+        marginRight: 8,
+    },
+    inputSearch: {
+        flex: 1,
+        paddingVertical: 10,
+        fontSize: 16,
+    },
     tablaWrapper: {
         backgroundColor: "#fff",
         borderRadius: 10,
@@ -204,26 +221,20 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     contenidoScroll: {
-        maxHeight: 400, // Altura máxima para ScrollView vertical
+        maxHeight: 400,
     },
     fila: {
         flexDirection: "row",
         alignItems: "center",
         minHeight: 45,
-        borderBottomWidth: 1, // Separador de fila
+        borderBottomWidth: 1,
         borderBottomColor: '#eee'
     },
-    filaPar: {
-        backgroundColor: "#f8f8f8",
-    },
-    filaImpar: {
-        backgroundColor: "#ffffff",
-    },
+    filaPar: { backgroundColor: "#f8f8f8" },
+    filaImpar: { backgroundColor: "#ffffff" },
     encabezado: {
-        backgroundColor: COLOR_PRIMARIO, // Azul Brillante para el encabezado
+        backgroundColor: COLOR_PRIMARIO,
         borderBottomWidth: 0,
-        borderTopLeftRadius: 10,
-        borderTopRightRadius: 10,
         paddingVertical: 12,
     },
     celda: {
@@ -236,17 +247,13 @@ const styles = StyleSheet.create({
     textoEncabezado: {
         fontWeight: "bold",
         fontSize: 14,
-        color: "#fff", 
+        color: "#fff",
         textAlign: "center",
     },
-    
-    // Estilos de Ancho de Columna
     columnaNombre: { width: 170 },
-    columnaDireccion: { width: 200 }, // 🚨 CAMBIO: Estilo para Dirección
+    columnaDireccion: { width: 200 },
     columnaTelefono: { width: 110 },
     columnaAcciones: { width: 120 },
-    
-    // Estilos de Botones de Acción
     contenedorBotones: {
         flexDirection: "row",
         justifyContent: "space-around",
@@ -254,14 +261,19 @@ const styles = StyleSheet.create({
         width: "100%",
     },
     botonEditar: {
-        backgroundColor: COLOR_ACCION, // Verde Menta Oscuro para editar
+        backgroundColor: COLOR_ACCION,
         padding: 7,
         borderRadius: 5,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    
-    // Estilos del Modal 
+    mensajeVacio: {
+        padding: 20,
+        textAlign: 'center',
+        color: '#6c757d',
+        fontStyle: 'italic',
+        fontSize: 15,
+    },
     overlay: {
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.6)",
@@ -293,7 +305,9 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         marginBottom: 15,
         fontSize: 16,
-        backgroundColor: '#fefefe'
+        backgroundColor: '#fefefe',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     filaBotones: {
         flexDirection: "row",
@@ -307,17 +321,9 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: "center",
     },
-    cancelar: { 
-        backgroundColor: COLOR_CANCELAR, 
-    },
-    confirmar: { 
-        backgroundColor: COLOR_PRIMARIO, // Azul Brillante para confirmar
-    },
-    textoAccion: { 
-        color: "white", 
-        fontWeight: "bold",
-        fontSize: 16,
-    },
+    cancelar: { backgroundColor: COLOR_CANCELAR },
+    confirmar: { backgroundColor: COLOR_PRIMARIO },
+    textoAccion: { color: "white", fontWeight: "bold", fontSize: 16 },
 });
 
 export default TablaClientes;

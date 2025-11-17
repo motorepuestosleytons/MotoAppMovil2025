@@ -1,5 +1,4 @@
-
-// Navegacion.js (CORREGIDO: SIN ALERT, clienteId sincronizado)
+// Navegacion.js (CORREGIDO: clienteId + datos del cliente se actualizan en CarritoScreen)
 
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -36,7 +35,7 @@ const ProductosStack = ({ cerrarSesion, onAgregar }) => (
 );
 
 // Cliente Tabs
-function MyTabsCliente({ cerrarSesion, carrito, setCarrito, onAgregar, clienteId, clienteEmail, clienteRol }) {
+function MyTabsCliente({ cerrarSesion, carrito, setCarrito, onAgregar, clienteId, clienteEmail, clienteRol, setClienteId, setClienteEmail, setClienteNombre, setClienteDireccion }) {
     const cartCount = carrito.reduce((sum, item) => sum + item.cantidad, 0);
     return (
         <Tab.Navigator screenOptions={{ tabBarActiveTintColor: "#7C7CFF" }}>
@@ -68,7 +67,11 @@ function MyTabsCliente({ cerrarSesion, carrito, setCarrito, onAgregar, clienteId
                         cerrarSesion={cerrarSesion} 
                         clienteId={clienteId} 
                         clienteEmail={clienteEmail} 
-                        clienteRol={clienteRol} 
+                        clienteRol={clienteRol}
+                        setClienteId={setClienteId}
+                        setClienteEmail={setClienteEmail}
+                        setClienteNombre={setClienteNombre}
+                        setClienteDireccion={setClienteDireccion}
                     />
                 )}
                 options={{
@@ -103,7 +106,7 @@ function MyTabsAdmon({ cerrarSesion, onAgregar }) {
 }
 
 // Navegación Principal
-export default function Navegacion({ cerrarSesion, carrito, setCarrito, onAgregar, initialRoute, clienteId, clienteEmail, clienteRol }) {
+export default function Navegacion({ cerrarSesion, carrito, setCarrito, onAgregar, initialRoute, clienteId, clienteEmail, clienteRol, setClienteId, setClienteEmail, setClienteNombre, setClienteDireccion }) {
     return (
         <NavigationContainer>
             <MainTabsStack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
@@ -119,7 +122,11 @@ export default function Navegacion({ cerrarSesion, carrito, setCarrito, onAgrega
                             onAgregar={onAgregar}
                             clienteId={clienteId}
                             clienteEmail={clienteEmail}
-                            clienteRol={clienteRol} 
+                            clienteRol={clienteRol}
+                            setClienteId={setClienteId}
+                            setClienteEmail={setClienteEmail}
+                            setClienteNombre={setClienteNombre}
+                            setClienteDireccion={setClienteDireccion}
                         />
                     )}
                 />
